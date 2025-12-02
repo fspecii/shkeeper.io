@@ -6,6 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: shkeeper
+    expose:
+      - "5000"
     ports:
       - "5000:5000"
     volumes:
@@ -21,12 +23,18 @@ services:
       - NOTIFICATION_TASK_DELAY=${NOTIFICATION_TASK_DELAY:-60}
       - DISABLE_CRYPTO_WHEN_LAGS=${DISABLE_CRYPTO_WHEN_LAGS:-false}
     restart: unless-stopped
+    networks:
+      - dokploy-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  dokploy-network:
+    external: true
 
 volumes:
   shkeeper_data:

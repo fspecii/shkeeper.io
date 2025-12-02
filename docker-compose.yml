@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  shkeeper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shkeeper
+    ports:
+      - "5000:5000"
+    volumes:
+      - shkeeper_data:/shkeeper.io/instance
+    environment:
+      - METRICS_USERNAME=${METRICS_USERNAME:-shkeeper}
+      - METRICS_PASSWORD=${METRICS_PASSWORD:-shkeeper}
+      - FORCE_WALLET_ENCRYPTION=${FORCE_WALLET_ENCRYPTION:-false}
+      - UNCONFIRMED_TX_NOTIFICATION=${UNCONFIRMED_TX_NOTIFICATION:-false}
+      - REQUESTS_TIMEOUT=${REQUESTS_TIMEOUT:-10}
+      - REQUESTS_NOTIFICATION_TIMEOUT=${REQUESTS_NOTIFICATION_TIMEOUT:-30}
+      - DEV_MODE=${DEV_MODE:-false}
+      - NOTIFICATION_TASK_DELAY=${NOTIFICATION_TASK_DELAY:-60}
+      - DISABLE_CRYPTO_WHEN_LAGS=${DISABLE_CRYPTO_WHEN_LAGS:-false}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  shkeeper_data:
+    driver: local

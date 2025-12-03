@@ -55,30 +55,6 @@ body.torpay-merchant {
   padding: 0;
 }
 
-/* Dark Mode */
-body.torpay-merchant.dark-mode {
-  --torpay-gray-50: #0A0A0A;
-  --torpay-gray-100: #171717;
-  --torpay-gray-200: #262626;
-  --torpay-gray-300: #383838;
-  --torpay-gray-400: #525252;
-  --torpay-white: #171717;
-  background: #0A0A0A;
-  color: #FAFAFA;
-}
-
-body.torpay-merchant.dark-mode .torpay-card,
-body.torpay-merchant.dark-mode .torpay-stat-card,
-body.torpay-merchant.dark-mode .torpay-auth-card {
-  background: #171717;
-  border-color: #383838;
-}
-
-body.torpay-merchant.dark-mode .torpay-sidebar {
-  background: #0A0A0A;
-  border-right-color: #383838;
-}
-
 /* ==================== SIDEBAR ==================== */
 .torpay-sidebar {
   background: var(--torpay-white);
@@ -136,10 +112,6 @@ body.torpay-merchant.dark-mode .torpay-sidebar {
   letter-spacing: -0.5px;
 }
 
-body.torpay-merchant.dark-mode .torpay-logo-text {
-  color: #FAFAFA;
-}
-
 .torpay-merchant-name {
   color: var(--torpay-gray-500);
   font-size: 0.875rem;
@@ -188,10 +160,6 @@ body.torpay-merchant.dark-mode .torpay-logo-text {
   border: 2px solid transparent;
 }
 
-body.torpay-merchant.dark-mode .torpay-nav-item {
-  color: #E5E5E5;
-}
-
 .torpay-nav-item:hover {
   background: var(--torpay-gray-100);
   border-color: var(--torpay-gray-200);
@@ -199,22 +167,11 @@ body.torpay-merchant.dark-mode .torpay-nav-item {
   transform: translateX(4px);
 }
 
-body.torpay-merchant.dark-mode .torpay-nav-item:hover {
-  background: #262626;
-  border-color: #383838;
-  color: #FAFAFA;
-}
-
 .torpay-nav-item.active {
   background: var(--torpay-black);
   color: var(--torpay-white);
   border-color: var(--torpay-black);
   box-shadow: var(--shadow-brutal-sm);
-}
-
-body.torpay-merchant.dark-mode .torpay-nav-item.active {
-  background: var(--torpay-blue);
-  border-color: var(--torpay-blue);
 }
 
 .torpay-nav-icon {
@@ -263,10 +220,6 @@ body.torpay-merchant.dark-mode .torpay-nav-item.active {
   letter-spacing: -0.5px;
 }
 
-body.torpay-merchant.dark-mode .torpay-page-title {
-  color: #FAFAFA;
-}
-
 /* ==================== CARDS ==================== */
 .torpay-card {
   background: var(--torpay-white);
@@ -291,19 +244,11 @@ body.torpay-merchant.dark-mode .torpay-page-title {
   background: var(--torpay-gray-50);
 }
 
-body.torpay-merchant.dark-mode .torpay-card-header {
-  background: #1a1a1a;
-}
-
 .torpay-card-title {
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--torpay-black);
   margin: 0;
-}
-
-body.torpay-merchant.dark-mode .torpay-card-title {
-  color: #FAFAFA;
 }
 
 .torpay-card-body {
@@ -395,10 +340,6 @@ body.torpay-merchant.dark-mode .torpay-card-title {
   letter-spacing: -1px;
 }
 
-body.torpay-merchant.dark-mode .torpay-stat-value {
-  color: #FAFAFA;
-}
-
 .torpay-stat-meta {
   font-size: 0.8125rem;
   color: var(--torpay-gray-400);
@@ -424,20 +365,11 @@ body.torpay-merchant.dark-mode .torpay-stat-value {
   background: var(--torpay-gray-50);
 }
 
-body.torpay-merchant.dark-mode .torpay-table th {
-  background: #1a1a1a;
-  color: var(--torpay-gray-400);
-}
-
 .torpay-table td {
   padding: 1rem 1.25rem;
   border-bottom: 2px solid var(--torpay-gray-200);
   font-size: 0.9375rem;
   font-weight: 500;
-}
-
-body.torpay-merchant.dark-mode .torpay-table td {
-  border-bottom-color: #383838;
 }
 
 .torpay-table tbody tr {
@@ -446,10 +378,6 @@ body.torpay-merchant.dark-mode .torpay-table td {
 
 .torpay-table tbody tr:hover {
   background: var(--torpay-gray-100);
-}
-
-body.torpay-merchant.dark-mode .torpay-table tbody tr:hover {
-  background: #1f1f1f;
 }
 
 .torpay-table tbody tr:last-child td {
@@ -497,12 +425,6 @@ body.torpay-merchant.dark-mode .torpay-table tbody tr:hover {
   background: var(--torpay-gray-200);
   color: var(--torpay-gray-700);
   border-color: var(--torpay-gray-400);
-}
-
-body.torpay-merchant.dark-mode .torpay-badge.secondary {
-  background: #383838;
-  color: #D4D4D4;
-  border-color: #525252;
 }
 
 /* ==================== BUTTONS ==================== */
@@ -635,10 +557,6 @@ body.torpay-merchant.dark-mode .torpay-badge.secondary {
   letter-spacing: 0.025em;
 }
 
-body.torpay-merchant.dark-mode .torpay-form-label {
-  color: #E5E5E5;
-}
-
 .torpay-form-input {
   width: 100%;
   padding: 0.875rem 1rem;
@@ -650,12 +568,6 @@ body.torpay-merchant.dark-mode .torpay-form-label {
   color: var(--torpay-black);
   transition: all 0.15s ease;
   font-family: 'Onest', sans-serif;
-}
-
-body.torpay-merchant.dark-mode .torpay-form-input {
-  background: #262626;
-  border-color: #383838;
-  color: #FAFAFA;
 }
 
 .torpay-form-input:focus {
@@ -687,12 +599,6 @@ select.torpay-form-input {
   color: var(--torpay-black);
   border: 2px solid var(--torpay-gray-200);
   font-weight: 500;
-}
-
-body.torpay-merchant.dark-mode .torpay-code {
-  background: #262626;
-  border-color: #383838;
-  color: #FAFAFA;
 }
 
 .torpay-code-block {
@@ -765,10 +671,6 @@ body.torpay-merchant.dark-mode .torpay-code {
   margin-bottom: 0.5rem;
 }
 
-body.torpay-merchant.dark-mode .torpay-empty-title {
-  color: var(--torpay-gray-400);
-}
-
 .torpay-empty-text {
   font-size: 0.9375rem;
   color: var(--torpay-gray-500);
@@ -825,10 +727,6 @@ body.torpay-merchant.dark-mode .torpay-empty-title {
   font-weight: 700;
   color: var(--torpay-black);
   margin-bottom: 0.5rem;
-}
-
-body.torpay-merchant.dark-mode .torpay-auth-title {
-  color: #FAFAFA;
 }
 
 .torpay-auth-subtitle {
@@ -912,11 +810,6 @@ body.torpay-merchant.dark-mode .torpay-auth-title {
   font-size: 0.875rem;
   font-weight: 500;
   word-break: break-all;
-}
-
-body.torpay-merchant.dark-mode .torpay-api-key {
-  background: #262626;
-  border-color: #383838;
 }
 
 /* Quick Actions */

@@ -85,20 +85,26 @@ services:
   bitcoin-shkeeper:
     image: vsyshost/bitcoin-shkeeper:1.0.5
     hostname: bitcoin-shkeeper
-    command: ["gunicorn", "--access-logfile=-", "--workers=1", "--threads=16", "--timeout=600", "--bind=0.0.0.0:6000", "run:server"]
     environment:
+      - REDIS_HOST=redis
       - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
       - BTC_NETWORK=main
       - SHKEEPER_HOST=shkeeper:5000
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
       - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
       - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
     volumes:
       - bitcoin_shkeeper_data:/root/.bitcoin
     depends_on:
       - redis
+    command: >
+      bash -c "sleep 10 && gunicorn
+      --access-logfile=-
+      --workers=1
+      --threads=16
+      --timeout=600
+      --bind=0.0.0.0:6000
+      run:server"
     networks:
       - default
     restart: unless-stopped
@@ -106,22 +112,22 @@ services:
   # Bitcoin Celery worker for background tasks
   bitcoin-tasks:
     image: vsyshost/bitcoin-shkeeper:1.0.5
-    command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "-B"]
     environment:
+      - REDIS_HOST=redis
       - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
       - BTC_NETWORK=main
       - SHKEEPER_HOST=shkeeper:5000
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
       - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
       - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
       - C_FORCE_ROOT=1
     volumes:
       - bitcoin_shkeeper_data:/root/.bitcoin
     depends_on:
       - redis
       - bitcoin-shkeeper
+    command: >
+      bash -c "sleep 15 && celery -A celery_worker.celery worker --loglevel=info -B"
     networks:
       - default
     restart: unless-stopped
@@ -132,21 +138,27 @@ services:
   tron-shkeeper:
     image: vsyshost/tron-shkeeper:1.1.10
     hostname: tron-shkeeper
-    command: ["gunicorn", "--access-logfile=-", "--workers=1", "--threads=64", "--timeout=600", "--bind=0.0.0.0:6000", "run:server"]
     environment:
+      - REDIS_HOST=redis
       - BTC_USERNAME=${USDT_USERNAME:-shkeeper}
       - BTC_PASSWORD=${USDT_PASSWORD:-shkeeper}
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
       - SHKEEPER_HOST=shkeeper:5000
       - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
       - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - REDIS_URL=redis://redis:6379/1
     volumes:
       - tron_shkeeper_data:/app/data
     depends_on:
       - mariadb
       - redis
+    command: >
+      bash -c "sleep 30 && gunicorn
+      --access-logfile=-
+      --workers=1
+      --threads=64
+      --timeout=600
+      --bind=0.0.0.0:6000
+      run:server"
     networks:
       - default
     restart: unless-stopped
@@ -154,8 +166,8 @@ services:
   # Tron Celery worker for background tasks
   tron-tasks:
     image: vsyshost/tron-shkeeper:1.1.10
-    command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "-B", "--schedule=/app/data/celerybeat-schedule"]
     environment:
+      - REDIS_HOST=redis
       - BTC_USERNAME=${USDT_USERNAME:-shkeeper}
       - BTC_PASSWORD=${USDT_PASSWORD:-shkeeper}
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
@@ -163,14 +175,14 @@ services:
       - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
       - C_FORCE_ROOT=1
       - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - REDIS_URL=redis://redis:6379/1
     volumes:
       - tron_shkeeper_data:/app/data
     depends_on:
       - mariadb
       - redis
       - tron-shkeeper
+    command: >
+      bash -c "sleep 35 && celery -A celery_worker.celery worker --loglevel=info -B --schedule=/app/data/celerybeat-schedule"
     networks:
       - default
     restart: unless-stopped

@@ -63,7 +63,7 @@
 
         <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">1. Add the script (once per page)</h3>
         <div class="torpay-code-block" id="script-tag" style="margin-bottom: 1rem;">
-<pre style="margin: 0; color: #e2e8f0;">&lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;</pre>
+<pre style="margin: 0; color: #e2e8f0;">&lt;script src="{{ base_url }}/static/js/torpay.js"&gt;&lt;/script&gt;</pre>
         </div>
         <button class="torpay-btn torpay-btn-secondary torpay-btn-sm torpay-copy-btn" onclick="copyCode('script-tag', this)" style="margin-bottom: 1.5rem;">Copy</button>
 
@@ -72,7 +72,7 @@
 <pre style="margin: 0; color: #e2e8f0;">&lt;script&gt;
 TorPay.init({
   apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
-  baseUrl: '{{ base_url }}'
+  baseUrl: '{{ base_url | replace("http://", "https://") }}'
 });
 &lt;/script&gt;</pre>
         </div>
@@ -134,11 +134,11 @@ TorPay.init({
   &lt;!-- TorPay Payment Button --&gt;
   &lt;div id="torpay-button"&gt;&lt;/div&gt;
 
-  &lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;
+  &lt;script src="{{ base_url }}/static/js/torpay.js"&gt;&lt;/script&gt;
   &lt;script&gt;
     TorPay.init({
       apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
-      baseUrl: '{{ base_url }}'
+      baseUrl: '{{ base_url | replace("http://", "https://") }}'
     });
 
     TorPay.createButton('#torpay-button', {
@@ -207,14 +207,14 @@ TorPay.createPayment({
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/shkeeper-widget.js') }}"></script>
+<script src="{{ url_for('static', filename='js/torpay.js') }}"></script>
 <script>
 // Available cryptos from database
 var availableCryptos = {{ cryptos | tojson }};
 
 TorPay.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url }}'
+  baseUrl: '{{ base_url | replace("http://", "https://") }}'
 });
 
 function generateCode() {
@@ -228,11 +228,11 @@ function generateCode() {
   var code = `<!-- TorPay Payment Button -->
 <div id="torpay-button"></div>
 
-<script src="{{ base_url }}/static/js/shkeeper-widget.js"><\/script>
+<script src="{{ base_url }}/static/js/torpay.js"><\/script>
 <script>
 TorPay.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url }}'
+  baseUrl: '{{ base_url | replace("http://", "https://") }}'
 });
 
 TorPay.createButton('#torpay-button', {

@@ -74,13 +74,13 @@
       <p>The easiest way to accept payments. Just add a few lines of code to your website.</p>
 
       <h5>1. Include the Widget Script</h5>
-      <pre class="bg-dark text-light p-3 rounded"><code>&lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;</code></pre>
+      <pre class="bg-dark text-light p-3 rounded"><code>&lt;script src="{{ base_url }}/static/js/torpay.js"&gt;&lt;/script&gt;</code></pre>
 
       <h5 class="mt-4">2. Initialize the Widget</h5>
       <pre class="bg-dark text-light p-3 rounded"><code>&lt;script&gt;
 SHKeeper.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url }}'
+  baseUrl: '{{ base_url | replace("http://", "https://") }}'
 });
 &lt;/script&gt;</code></pre>
 
@@ -519,5 +519,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script src="{{ url_for('static', filename='js/shkeeper-widget.js') }}"></script>
+<script src="{{ url_for('static', filename='js/torpay.js') }}"></script>
 {% endblock %}

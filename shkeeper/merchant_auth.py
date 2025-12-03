@@ -150,10 +150,11 @@ def dashboard():
     # Get balances
     balances = MerchantBalance.query.filter_by(merchant_id=merchant.id).all()
 
-    # Calculate total balance in USD
-    total_balance = sum(
-        (b.available_balance or Decimal(0)) for b in balances
-    )
+    # Calculate total balances grouped by fiat to avoid mixing currencies
+    total_balances_by_fiat = {}
+    for b in balances:
+        fiat = (b.fiat or "USD").upper()
+        total_balances_by_fiat[fiat] = total_balances_by_fiat.get(fiat, Decimal(0)) + (b.available_balance or Decimal(0))
 
     # Get recent invoices
     recent_invoices = (
@@ -189,7 +190,7 @@ def dashboard():
         "merchant/dashboard.j2",
         merchant=merchant,
         balances=balances,
-        total_balance=total_balance,
+        total_balances_by_fiat=total_balances_by_fiat,
         recent_invoices=recent_invoices,
         recent_commissions=recent_commissions,
         pending_payouts=pending_payouts,
@@ -360,11 +361,19 @@ def request_payout():
         flash("Invalid amount.")
         return redirect(url_for("merchant_auth.payouts"))
 
-    # Get balance for this crypto
-    balance = MerchantBalance.query.filter_by(
-        merchant_id=merchant.id,
-        crypto=crypto
-    ).first()
+    # Pick a balance with funds for this crypto (respecting fiat bucket)
+    fiat_preference = request.form.get("fiat")
+    balances = [
+        b for b in MerchantBalance.query.filter_by(merchant_id=merchant.id, crypto=crypto).all()
+        if (b.available_balance or Decimal(0)) > 0
+    ]
+
+    balance = None
+    if fiat_preference:
+        balance = next((b for b in balances if (b.fiat or "").upper() == fiat_preference.upper()), None)
+    if not balance and balances:
+        # Default to the balance with the most available funds
+        balance = max(balances, key=lambda b: b.available_balance or Decimal(0))
 
     if not balance or (balance.available_balance or Decimal(0)) <= 0:
         flash("No balance available for this currency.")
@@ -395,6 +404,7 @@ def request_payout():
     payout = MerchantPayout(
         merchant_id=merchant.id,
         crypto=crypto,
+        fiat=balance.fiat or "USD",
         amount_fiat=amount,
         dest_address=dest_address,
         status=MerchantPayoutStatus.PENDING,

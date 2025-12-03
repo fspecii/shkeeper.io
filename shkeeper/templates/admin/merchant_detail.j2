@@ -119,7 +119,15 @@
       <div class="card h-100">
         <div class="card-body text-center">
           <h5 class="card-title text-muted">Total Volume</h5>
-          <h2 class="text-primary">${{ "%.2f"|format(stats.total_volume|float) }}</h2>
+          <h2 class="text-primary">
+            {% if stats.total_volume_by_fiat %}
+              {% for fiat, total in stats.total_volume_by_fiat.items() %}
+                <div style="line-height:1.1;">{{ fiat }} {{ "%.2f"|format(total|float) }}</div>
+              {% endfor %}
+            {% else %}
+              $0.00
+            {% endif %}
+          </h2>
         </div>
       </div>
     </div>
@@ -127,7 +135,15 @@
       <div class="card h-100">
         <div class="card-body text-center">
           <h5 class="card-title text-muted">Commission Earned</h5>
-          <h2 class="text-info">${{ "%.2f"|format(stats.commission_earned|float) }}</h2>
+          <h2 class="text-info">
+            {% if stats.commission_by_fiat %}
+              {% for fiat, total in stats.commission_by_fiat.items() %}
+                <div style="line-height:1.1;">{{ fiat }} {{ "%.2f"|format(total|float) }}</div>
+              {% endfor %}
+            {% else %}
+              $0.00
+            {% endif %}
+          </h2>
         </div>
       </div>
     </div>
@@ -153,8 +169,12 @@
           <tbody>
             {% for balance in balances %}
             <tr>
-              <td>{{ balance.crypto }}</td>
-              <td>${{ "%.2f"|format(balance.total_balance|float) }}</td>
+              <td>
+                <strong>{{ balance.crypto }}</strong>
+                <div class="text-muted small">{{ balance.fiat or 'USD' }}</div>
+              </td>
+              {% set total = (balance.available_balance or 0) + (balance.pending_balance or 0) %}
+              <td>${{ "%.2f"|format(total|float) }}</td>
               <td class="text-success">${{ "%.2f"|format(balance.available_balance|float) }}</td>
               <td class="text-warning">${{ "%.2f"|format(balance.pending_balance|float) }}</td>
             </tr>

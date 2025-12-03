@@ -18,7 +18,15 @@
 <div class="torpay-grid torpay-grid-3 torpay-mb-4">
   <div class="torpay-stat-card primary torpay-animate">
     <div class="torpay-stat-label">Available Balance</div>
-    <div class="torpay-stat-value">${{ "%.2f"|format(total_balance|float) }}</div>
+    <div class="torpay-stat-value">
+      {% if total_balances_by_fiat %}
+        {% for fiat, amount in total_balances_by_fiat.items() %}
+          <div style="line-height: 1.2;">{{ fiat }} {{ "%.2f"|format(amount|float) }}</div>
+        {% endfor %}
+      {% else %}
+        $0.00
+      {% endif %}
+    </div>
     <div class="torpay-stat-meta" style="color: rgba(255,255,255,0.7);">Ready to withdraw</div>
   </div>
 
@@ -68,6 +76,7 @@
         <tr>
           <td>
             <strong style="color: var(--torpay-primary);">{{ balance.crypto }}</strong>
+            <div style="font-size: 0.85rem; color: var(--torpay-muted);">{{ balance.fiat or 'USD' }}</div>
           </td>
           <td style="text-align: right;">${{ "%.2f"|format(balance.total_received|float) }}</td>
           <td style="text-align: right; color: var(--torpay-danger);">-${{ "%.2f"|format(balance.total_commission|float) }}</td>

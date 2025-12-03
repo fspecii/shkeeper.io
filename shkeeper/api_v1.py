@@ -710,12 +710,19 @@ def list_payouts(crypto_name):
 @api_key_required
 def get_txid_info(txid, external_id):
     try:
+        # Multi-tenant: filter by merchant if authenticated as merchant
+        merchant_id = g.merchant.id if hasattr(g, 'merchant') and g.merchant else None
+
         info = {}
-        if (
-            tx := Transaction.query.join(Invoice)
+        query = (
+            Transaction.query.join(Invoice)
             .filter(Transaction.txid == txid, Invoice.external_id == external_id)
-            .first()
-        ):
+        )
+
+        if merchant_id:
+            query = query.filter(Invoice.merchant_id == merchant_id)
+
+        if tx := query.first():
             info = {
                 "crypto": tx.crypto,
                 "amount": format_decimal(tx.amount_fiat),
@@ -861,13 +868,23 @@ def request_merchant_payout():
             "message": f"No payout address configured for {crypto}. Please configure it in your merchant settings."
         }, 400
 
-    # Get merchant's balance for this crypto
-    balance = MerchantBalance.query.filter_by(
-        merchant_id=merchant.id,
-        crypto=crypto
-    ).first()
+    # Get merchant's balance for this crypto (any fiat)
+    fiat_requested = req.get("fiat")
+    balances = [
+        b for b in MerchantBalance.query.filter_by(merchant_id=merchant.id, crypto=crypto).all()
+        if (b.available_balance or Decimal(0)) > 0
+    ]
 
-    if not balance or (balance.available_balance or 0) <= 0:
+    balance = None
+    if fiat_requested:
+        balance = next(
+            (b for b in balances if (b.fiat or "").upper() == str(fiat_requested).upper()),
+            None,
+        )
+    if not balance and balances:
+        balance = max(balances, key=lambda b: b.available_balance or Decimal(0))
+
+    if not balance:
         return {"status": "error", "message": f"No available balance for {crypto}"}, 400
 
     # Determine amount
@@ -896,6 +913,7 @@ def request_merchant_payout():
     payout = MerchantPayout(
         merchant_id=merchant.id,
         crypto=crypto,
+        fiat=balance.fiat or "USD",
         amount_fiat=amount,
         dest_address=payout_address,
         status=MerchantPayoutStatus.PENDING
@@ -945,6 +963,7 @@ def list_merchant_payouts():
             {
                 "id": p.id,
                 "crypto": p.crypto,
+                "fiat": p.fiat or "USD",
                 "amount_fiat": str(p.amount_fiat),
                 "amount_crypto": str(p.amount_crypto) if p.amount_crypto else None,
                 "dest_address": p.dest_address,

@@ -19,22 +19,24 @@ from shkeeper.models import (
 from shkeeper.modules.classes.crypto import Crypto
 
 
-def get_crypto_amount_for_fiat(crypto_name: str, fiat_amount: Decimal) -> Decimal:
+def get_crypto_amount_for_fiat(crypto_name: str, fiat: str, fiat_amount: Decimal) -> Decimal:
     """
-    Convert a fiat amount (USD) to crypto amount using current exchange rate.
+    Convert a fiat amount to crypto amount using current exchange rate.
 
     Args:
         crypto_name: The cryptocurrency symbol (e.g., "BTC", "ETH")
+        fiat: Fiat currency code (e.g., "USD", "EUR")
         fiat_amount: The amount in fiat (USD)
 
     Returns:
         The equivalent amount in cryptocurrency
     """
-    rate = ExchangeRate.get(crypto_name)
-    if not rate or rate.rate <= 0:
-        raise ValueError(f"No valid exchange rate found for {crypto_name}")
+    rate = ExchangeRate.get(fiat, crypto_name)
+    live_rate = rate.get_rate()
+    if not rate or live_rate <= 0:
+        raise ValueError(f"No valid exchange rate found for {fiat}-{crypto_name}")
 
-    crypto_amount = fiat_amount / rate.rate
+    crypto_amount = fiat_amount / live_rate
     return crypto_amount
 
 
@@ -88,8 +90,10 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
     db.session.commit()
 
     try:
-        # Convert fiat to crypto amount
-        crypto_amount = get_crypto_amount_for_fiat(payout.crypto, payout.amount_fiat)
+        # Convert fiat to crypto amount using the fiat of the payout
+        crypto_amount = get_crypto_amount_for_fiat(
+            payout.crypto, payout.fiat or "USD", payout.amount_fiat
+        )
 
         app.logger.info(
             f"[MerchantPayout #{payout.id}] Processing payout: "
@@ -121,12 +125,15 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
             payout.error_message = None
 
             # Deduct from pending balance (was moved there when payout was requested)
+            # Payouts are currently processed in USD
             balance = MerchantBalance.query.filter_by(
                 merchant_id=merchant.id,
-                crypto=payout.crypto
+                crypto=payout.crypto,
+                fiat=payout.fiat or "USD",
             ).first()
             if balance:
                 balance.pending_balance = (balance.pending_balance or Decimal(0)) - payout.amount_fiat
+                balance.total_paid_out = (balance.total_paid_out or Decimal(0)) + payout.amount_fiat
 
             db.session.commit()
 

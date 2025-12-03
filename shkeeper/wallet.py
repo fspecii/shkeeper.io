@@ -647,21 +647,33 @@ def admin_merchant_detail(merchant_id):
     # Calculate stats
     total_invoices = Invoice.query.filter_by(merchant_id=merchant_id).count()
     paid_invoices = Invoice.query.filter_by(merchant_id=merchant_id).filter(
-        Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.PAID_EXPIRED])
+        Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.OVERPAID])
     ).count()
-    total_volume = db.session.query(db.func.sum(Invoice.fiat)).filter(
-        Invoice.merchant_id == merchant_id,
-        Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.PAID_EXPIRED])
-    ).scalar() or 0
-    commission_earned = db.session.query(db.func.sum(CommissionRecord.commission_amount)).filter_by(
-        merchant_id=merchant_id
-    ).scalar() or 0
+    volume_rows = (
+        db.session.query(Invoice.fiat, db.func.sum(Invoice.balance_fiat))
+        .filter(
+            Invoice.merchant_id == merchant_id,
+            Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.OVERPAID]),
+        )
+        .group_by(Invoice.fiat)
+        .all()
+    )
+    total_volume_by_fiat = {(fiat or "USD"): total or 0 for fiat, total in volume_rows}
+
+    commission_rows = (
+        db.session.query(Invoice.fiat, db.func.sum(CommissionRecord.commission_amount))
+        .join(Invoice, CommissionRecord.invoice_id == Invoice.id)
+        .filter(CommissionRecord.merchant_id == merchant_id)
+        .group_by(Invoice.fiat)
+        .all()
+    )
+    commission_by_fiat = {(fiat or "USD"): total or 0 for fiat, total in commission_rows}
 
     stats = {
         "total_invoices": total_invoices,
         "paid_invoices": paid_invoices,
-        "total_volume": total_volume,
-        "commission_earned": commission_earned,
+        "total_volume_by_fiat": total_volume_by_fiat,
+        "commission_by_fiat": commission_by_fiat,
     }
 
     return render_template(
@@ -828,19 +840,22 @@ def admin_merchant_payouts():
         MerchantPayout.status.in_([MerchantPayoutStatus.FAILED, MerchantPayoutStatus.REJECTED])
     )
 
+    def amount_by_fiat(statuses):
+        rows = (
+            db.session.query(MerchantPayout.fiat, db.func.sum(MerchantPayout.amount_fiat))
+            .filter(MerchantPayout.status.in_(statuses))
+            .group_by(MerchantPayout.fiat)
+            .all()
+        )
+        return {(fiat or "USD"): total or 0 for fiat, total in rows}
+
     stats = {
         "pending_count": pending_payouts.count(),
-        "pending_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
-            MerchantPayout.status == MerchantPayoutStatus.PENDING
-        ).scalar() or 0,
+        "pending_amounts": amount_by_fiat([MerchantPayoutStatus.PENDING]),
         "processing_count": processing_payouts.count(),
-        "processing_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
-            MerchantPayout.status.in_([MerchantPayoutStatus.APPROVED, MerchantPayoutStatus.PROCESSING])
-        ).scalar() or 0,
+        "processing_amounts": amount_by_fiat([MerchantPayoutStatus.APPROVED, MerchantPayoutStatus.PROCESSING]),
         "completed_count": completed_payouts.count(),
-        "completed_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
-            MerchantPayout.status == MerchantPayoutStatus.COMPLETED
-        ).scalar() or 0,
+        "completed_amounts": amount_by_fiat([MerchantPayoutStatus.COMPLETED]),
         "failed_count": failed_payouts.count(),
     }
 
@@ -885,7 +900,8 @@ def admin_reject_payout(payout_id):
     # Return balance to merchant
     balance = MerchantBalance.query.filter_by(
         merchant_id=payout.merchant_id,
-        crypto=payout.crypto
+        crypto=payout.crypto,
+        fiat=payout.fiat or "USD",
     ).first()
     if balance:
         balance.pending_balance = (balance.pending_balance or 0) - payout.amount_fiat

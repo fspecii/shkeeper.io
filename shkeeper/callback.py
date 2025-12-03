@@ -1,4 +1,8 @@
 import click
+import hmac
+import hashlib
+import time
+from datetime import datetime, timedelta
 from decimal import Decimal
 from shkeeper import requests
 
@@ -15,6 +19,33 @@ from shkeeper.utils import format_decimal, remove_exponent
 
 
 bp = Blueprint("callback", __name__)
+
+
+# ============================================================================
+# Webhook Signature Generation
+# ============================================================================
+
+def generate_webhook_signature(payload: dict, secret: str, timestamp: int) -> str:
+    """
+    Generate HMAC-SHA256 signature for webhook payload.
+
+    The signature is computed over: "{timestamp}.{json_payload}"
+    This allows merchants to verify both the payload integrity and prevent replay attacks.
+
+    Args:
+        payload: The notification payload dict
+        secret: The merchant's webhook_secret
+        timestamp: Unix timestamp of when the webhook is sent
+
+    Returns:
+        Hex-encoded HMAC-SHA256 signature
+    """
+    message = f"{timestamp}.{json.dumps(payload, separators=(',', ':'), sort_keys=True)}"
+    return hmac.new(
+        secret.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
 
 
 # ============================================================================
@@ -99,8 +130,8 @@ def record_commission(invoice, tx, commission_amount, commission_percent, commis
     )
     db.session.add(commission_record)
 
-    # Update merchant balance
-    balance = MerchantBalance.get_or_create(merchant.id, tx.crypto)
+    # Update merchant balance (track per-crypto AND per-fiat)
+    balance = MerchantBalance.get_or_create(merchant.id, tx.crypto, invoice.fiat)
     balance.total_received = (balance.total_received or Decimal(0)) + invoice.balance_fiat
     balance.total_commission = (balance.total_commission or Decimal(0)) + commission_amount
     balance.available_balance = (balance.available_balance or Decimal(0)) + net_amount
@@ -134,6 +165,16 @@ def send_unconfirmed_notification(utx: UnconfirmedTransaction):
         "amount": format_decimal(utx.amount_crypto, precision=crypto.precision),
     }
 
+    # Build headers with backward-compatible API key + new signature for merchants
+    headers = {"X-Shkeeper-Api-Key": apikey}
+    if invoice.merchant_id:
+        merchant = Merchant.query.get(invoice.merchant_id)
+        if merchant and merchant.webhook_secret:
+            timestamp = int(time.time())
+            signature = generate_webhook_signature(notification, merchant.webhook_secret, timestamp)
+            headers["X-Shkeeper-Signature"] = signature
+            headers["X-Shkeeper-Timestamp"] = str(timestamp)
+
     app.logger.warning(
         f"[{utx.crypto}/{utx.txid}] Posting {notification} to {invoice.callback_url} with api key {apikey}"
     )
@@ -141,7 +182,7 @@ def send_unconfirmed_notification(utx: UnconfirmedTransaction):
         r = requests.post(
             invoice.callback_url,
             json=notification,
-            headers={"X-Shkeeper-Api-Key": apikey},
+            headers=headers,
             timeout=app.config.get("REQUESTS_NOTIFICATION_TIMEOUT"),
         )
     except Exception as e:
@@ -233,6 +274,17 @@ def send_notification(tx):
     )
 
     apikey = Crypto.instances[tx.crypto].wallet.apikey
+
+    # Build headers with backward-compatible API key + new signature for merchants
+    headers = {"X-Shkeeper-Api-Key": apikey}
+    if invoice.merchant_id:
+        merchant = Merchant.query.get(invoice.merchant_id)
+        if merchant and merchant.webhook_secret:
+            timestamp = int(time.time())
+            signature = generate_webhook_signature(notification, merchant.webhook_secret, timestamp)
+            headers["X-Shkeeper-Signature"] = signature
+            headers["X-Shkeeper-Timestamp"] = str(timestamp)
+
     app.logger.warning(
         f"[{tx.crypto}/{tx.txid}] Posting {json.dumps(notification)} to {invoice.callback_url} with api key {apikey}"
     )
@@ -240,7 +292,7 @@ def send_notification(tx):
         r = requests.post(
             invoice.callback_url,
             json=notification,
-            headers={"X-Shkeeper-Api-Key": apikey},
+            headers=headers,
             timeout=app.config.get("REQUESTS_NOTIFICATION_TIMEOUT"),
         )
     except Exception as e:

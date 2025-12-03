@@ -15,7 +15,13 @@
         <div class="card-body text-center">
           <h5 class="card-title text-muted">Pending Approval</h5>
           <h2 class="text-warning">{{ stats.pending_count }}</h2>
-          <small class="text-muted">${{ "%.2f"|format(stats.pending_amount|float) }}</small>
+          <small class="text-muted">
+            {% if stats.pending_amounts %}
+              {% for fiat, amt in stats.pending_amounts.items() %}
+                <div>{{ fiat }} {{ "%.2f"|format(amt|float) }}</div>
+              {% endfor %}
+            {% else %}$0.00{% endif %}
+          </small>
         </div>
       </div>
     </div>
@@ -24,7 +30,13 @@
         <div class="card-body text-center">
           <h5 class="card-title text-muted">Processing</h5>
           <h2 class="text-primary">{{ stats.processing_count }}</h2>
-          <small class="text-muted">${{ "%.2f"|format(stats.processing_amount|float) }}</small>
+          <small class="text-muted">
+            {% if stats.processing_amounts %}
+              {% for fiat, amt in stats.processing_amounts.items() %}
+                <div>{{ fiat }} {{ "%.2f"|format(amt|float) }}</div>
+              {% endfor %}
+            {% else %}$0.00{% endif %}
+          </small>
         </div>
       </div>
     </div>
@@ -33,7 +45,13 @@
         <div class="card-body text-center">
           <h5 class="card-title text-muted">Completed</h5>
           <h2 class="text-success">{{ stats.completed_count }}</h2>
-          <small class="text-muted">${{ "%.2f"|format(stats.completed_amount|float) }}</small>
+          <small class="text-muted">
+            {% if stats.completed_amounts %}
+              {% for fiat, amt in stats.completed_amounts.items() %}
+                <div>{{ fiat }} {{ "%.2f"|format(amt|float) }}</div>
+              {% endfor %}
+            {% else %}$0.00{% endif %}
+          </small>
         </div>
       </div>
     </div>
@@ -105,6 +123,7 @@
               <th>ID</th>
               <th>Merchant</th>
               <th>Currency</th>
+              <th>Fiat</th>
               <th>Amount</th>
               <th>Destination</th>
               <th>Status</th>
@@ -121,6 +140,7 @@
                 <a href="{{ url_for('wallet.admin_merchant_detail', merchant_id=payout.merchant_id) }}">{{ payout.merchant.name }}</a>
               </td>
               <td>{{ payout.crypto }}</td>
+              <td>{{ payout.fiat or 'USD' }}</td>
               <td>${{ "%.2f"|format(payout.amount_fiat|float) }}</td>
               <td>
                 <code title="{{ payout.dest_address }}" style="cursor: pointer;" onclick="navigator.clipboard.writeText('{{ payout.dest_address }}')">

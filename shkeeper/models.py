@@ -117,14 +117,15 @@ class Merchant(db.Model):
 
 class MerchantBalance(db.Model):
     """
-    Track per-crypto balances for each merchant.
+    Track per-crypto, per-fiat balances for each merchant.
     Updated when payments are received and commissions are deducted.
     """
     id = db.Column(db.Integer, primary_key=True)
     merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=False)
     crypto = db.Column(db.String, nullable=False)
+    fiat = db.Column(db.String, nullable=False, default="USD")
 
-    # Balances (in fiat - USD)
+    # Balances (in the fiat currency specified above)
     total_received = db.Column(db.Numeric, default=0)      # Total ever received
     total_commission = db.Column(db.Numeric, default=0)    # Total commission paid
     total_paid_out = db.Column(db.Numeric, default=0)      # Total withdrawn
@@ -133,14 +134,14 @@ class MerchantBalance(db.Model):
 
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
 
-    __table_args__ = (db.UniqueConstraint("merchant_id", "crypto"),)
+    __table_args__ = (db.UniqueConstraint("merchant_id", "crypto", "fiat"),)
 
     @classmethod
-    def get_or_create(cls, merchant_id, crypto):
+    def get_or_create(cls, merchant_id, crypto, fiat="USD"):
         """Get existing balance record or create a new one."""
-        balance = cls.query.filter_by(merchant_id=merchant_id, crypto=crypto).first()
+        balance = cls.query.filter_by(merchant_id=merchant_id, crypto=crypto, fiat=fiat).first()
         if not balance:
-            balance = cls(merchant_id=merchant_id, crypto=crypto)
+            balance = cls(merchant_id=merchant_id, crypto=crypto, fiat=fiat)
             db.session.add(balance)
             db.session.commit()
         return balance
@@ -149,6 +150,7 @@ class MerchantBalance(db.Model):
         """Convert balance to JSON-safe dict."""
         return {
             "crypto": self.crypto,
+            "fiat": self.fiat,
             "total_received": str(self.total_received or 0),
             "total_commission": str(self.total_commission or 0),
             "total_paid_out": str(self.total_paid_out or 0),
@@ -258,6 +260,7 @@ class MerchantPayout(db.Model):
     merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=False)
 
     crypto = db.Column(db.String, nullable=False)
+    fiat = db.Column(db.String, default="USD")  # Fiat currency for the payout request
     amount_fiat = db.Column(db.Numeric, nullable=False)  # Amount in fiat (USD)
     amount_crypto = db.Column(db.Numeric)  # Calculated at processing time
     dest_address = db.Column(db.String(512), nullable=False)
@@ -276,6 +279,7 @@ class MerchantPayout(db.Model):
         return {
             "id": self.id,
             "crypto": self.crypto,
+            "fiat": self.fiat or "USD",
             "amount_fiat": str(self.amount_fiat),
             "amount_crypto": str(self.amount_crypto) if self.amount_crypto else None,
             "dest_address": self.dest_address,

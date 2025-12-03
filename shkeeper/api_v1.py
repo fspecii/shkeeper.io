@@ -6,7 +6,7 @@ from operator import  itemgetter
 
 
 from werkzeug.datastructures import Headers
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, g
 from flask import request
 from flask import Response
 from flask import stream_with_context
@@ -111,12 +111,14 @@ def payment_request(crypto_name):
             }
 
         req = request.get_json(force=True)
-        invoice = Invoice.add(crypto=crypto, request=req)
+        # Multi-tenant: pass merchant_id if authenticated as merchant
+        merchant_id = g.merchant.id if hasattr(g, 'merchant') and g.merchant else None
+        invoice = Invoice.add(crypto=crypto, request=req, merchant_id=merchant_id)
         response = {
             "status": "success",
             **invoice.for_response(),
         }
-        app.logger.info({"request": req, "response": response})
+        app.logger.info({"request": req, "response": response, "merchant_id": merchant_id})
 
     except Exception as e:
         app.logger.exception(f"Failed to create invoice for {req}")
@@ -604,21 +606,42 @@ def list_addresses(crypto_name):
 @api_key_required
 def list_transactions(crypto, addr):
     try:
+        # Multi-tenant: filter by merchant if authenticated as merchant
+        merchant_id = g.merchant.id if hasattr(g, 'merchant') and g.merchant else None
+
         if crypto is None or addr is None:
+            # List all transactions
+            confirmed_query = Transaction.query.join(Invoice)
+            unconfirmed_query = UnconfirmedTransaction.query.join(Invoice)
+
+            if merchant_id:
+                confirmed_query = confirmed_query.filter(Invoice.merchant_id == merchant_id)
+                unconfirmed_query = unconfirmed_query.filter(Invoice.merchant_id == merchant_id)
+
             transactions = (
-                *Transaction.query.all(),
-                *UnconfirmedTransaction.query.all(),
+                *confirmed_query.all(),
+                *unconfirmed_query.all(),
             )
         else:
+            # Filter by crypto and address
             confirmed = (
                 Transaction.query.join(Invoice)
                 .join(InvoiceAddress, isouter=True)
                 .filter(Transaction.crypto == crypto)
                 .filter((Invoice.addr == addr) | (InvoiceAddress.addr == addr))
             )
+            unconfirmed = UnconfirmedTransaction.query.join(Invoice).filter(
+                UnconfirmedTransaction.crypto == crypto,
+                UnconfirmedTransaction.addr == addr
+            )
+
+            if merchant_id:
+                confirmed = confirmed.filter(Invoice.merchant_id == merchant_id)
+                unconfirmed = unconfirmed.filter(Invoice.merchant_id == merchant_id)
+
             transactions = (
-                *confirmed,
-                *UnconfirmedTransaction.query.filter_by(crypto=crypto, addr=addr),
+                *confirmed.all(),
+                *unconfirmed.all(),
             )
         return jsonify(
             status="success", transactions=[tx.to_json() for tx in transactions]
@@ -637,10 +660,17 @@ def list_transactions(crypto, addr):
 @api_key_required
 def list_invoices(external_id):
     try:
-        if external_id is None:
-            invoices = Invoice.query.filter(Invoice.status != "OUTGOING").all()
-        else:
-            invoices = Invoice.query.filter_by(external_id=external_id)
+        # Start with base query
+        query = Invoice.query.filter(Invoice.status != InvoiceStatus.OUTGOING)
+
+        # Multi-tenant: filter by merchant if authenticated as merchant
+        if hasattr(g, 'merchant') and g.merchant:
+            query = query.filter(Invoice.merchant_id == g.merchant.id)
+
+        if external_id is not None:
+            query = query.filter_by(external_id=external_id)
+
+        invoices = query.all()
         return jsonify(status="success", invoices=[i.to_json() for i in invoices])
     except Exception as e:
         app.logger.exception(f"Failed to list invoices")
@@ -729,3 +759,206 @@ def test_callback_receiver():
     app.logger.info("=============== Test callback received ===================")
     app.logger.info(callback)
     return {"status": "success", "message": "callback logged"}, 202
+
+
+# ============================================================================
+# Admin-only Merchant Payout Processing API
+# ============================================================================
+
+@bp.post("/admin/process-payouts")
+@login_required
+def process_pending_payouts():
+    """
+    Process all approved merchant payouts.
+
+    This endpoint is intended to be called by a cron job or scheduler
+    to automatically process approved payout requests.
+
+    Requires admin authentication (login_required).
+    """
+    from shkeeper.merchant_payout_service import process_approved_payouts
+
+    results = process_approved_payouts()
+
+    successful = [r for r in results if r[1]]
+    failed = [r for r in results if not r[1]]
+
+    return {
+        "status": "success",
+        "processed": len(results),
+        "successful": len(successful),
+        "failed": len(failed),
+        "results": [
+            {
+                "payout_id": r[0],
+                "success": r[1],
+                "message": r[2]
+            }
+            for r in results
+        ]
+    }
+
+
+@bp.get("/merchant/balance")
+@api_key_required
+def get_merchant_balance():
+    """
+    Get the authenticated merchant's current balances.
+
+    Returns balance for each cryptocurrency the merchant has received payments in.
+    """
+    if not hasattr(g, 'merchant') or not g.merchant:
+        return {"status": "error", "message": "Merchant authentication required"}, 401
+
+    balances = MerchantBalance.query.filter_by(merchant_id=g.merchant.id).all()
+
+    return {
+        "status": "success",
+        "balances": [
+            {
+                "crypto": b.crypto,
+                "total_received": str(b.total_received or 0),
+                "total_commission": str(b.total_commission or 0),
+                "available_balance": str(b.available_balance or 0),
+                "pending_balance": str(b.pending_balance or 0),
+            }
+            for b in balances
+        ]
+    }
+
+
+@bp.post("/merchant/payout")
+@api_key_required
+def request_merchant_payout():
+    """
+    Request a payout for the authenticated merchant.
+
+    JSON body:
+    {
+        "crypto": "BTC",          # Required: cryptocurrency to withdraw
+        "amount": 100.00          # Optional: amount in USD (0 or omit for full balance)
+    }
+    """
+    if not hasattr(g, 'merchant') or not g.merchant:
+        return {"status": "error", "message": "Merchant authentication required"}, 401
+
+    merchant = g.merchant
+
+    if merchant.status != MerchantStatus.ACTIVE:
+        return {"status": "error", "message": "Merchant account is not active"}, 403
+
+    req = request.get_json(force=True)
+
+    crypto = req.get("crypto")
+    if not crypto:
+        return {"status": "error", "message": "crypto is required"}, 400
+
+    # Check payout address is configured
+    payout_address = merchant.get_payout_address(crypto)
+    if not payout_address:
+        return {
+            "status": "error",
+            "message": f"No payout address configured for {crypto}. Please configure it in your merchant settings."
+        }, 400
+
+    # Get merchant's balance for this crypto
+    balance = MerchantBalance.query.filter_by(
+        merchant_id=merchant.id,
+        crypto=crypto
+    ).first()
+
+    if not balance or (balance.available_balance or 0) <= 0:
+        return {"status": "error", "message": f"No available balance for {crypto}"}, 400
+
+    # Determine amount
+    requested_amount = Decimal(str(req.get("amount", 0)))
+    if requested_amount <= 0:
+        # Withdraw full balance
+        amount = balance.available_balance
+    else:
+        if requested_amount > balance.available_balance:
+            return {
+                "status": "error",
+                "message": f"Requested amount (${requested_amount}) exceeds available balance (${balance.available_balance})"
+            }, 400
+        amount = requested_amount
+
+    # Check minimum payout
+    platform_settings = PlatformSettings.get()
+    min_payout = merchant.min_payout_amount or platform_settings.min_payout_amount or Decimal(50)
+    if amount < min_payout:
+        return {
+            "status": "error",
+            "message": f"Minimum payout amount is ${min_payout}"
+        }, 400
+
+    # Create payout request
+    payout = MerchantPayout(
+        merchant_id=merchant.id,
+        crypto=crypto,
+        amount_fiat=amount,
+        dest_address=payout_address,
+        status=MerchantPayoutStatus.PENDING
+    )
+    db.session.add(payout)
+
+    # Move amount from available to pending
+    balance.available_balance = (balance.available_balance or Decimal(0)) - amount
+    balance.pending_balance = (balance.pending_balance or Decimal(0)) + amount
+
+    db.session.commit()
+
+    return {
+        "status": "success",
+        "message": "Payout request submitted",
+        "payout": {
+            "id": payout.id,
+            "crypto": payout.crypto,
+            "amount_fiat": str(payout.amount_fiat),
+            "dest_address": payout.dest_address,
+            "status": payout.status.value
+        }
+    }
+
+
+@bp.get("/merchant/payouts")
+@api_key_required
+def list_merchant_payouts():
+    """
+    List the authenticated merchant's payout requests.
+    """
+    if not hasattr(g, 'merchant') or not g.merchant:
+        return {"status": "error", "message": "Merchant authentication required"}, 401
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 50, type=int)
+
+    payouts = MerchantPayout.query.filter_by(
+        merchant_id=g.merchant.id
+    ).order_by(
+        MerchantPayout.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+
+    return {
+        "status": "success",
+        "payouts": [
+            {
+                "id": p.id,
+                "crypto": p.crypto,
+                "amount_fiat": str(p.amount_fiat),
+                "amount_crypto": str(p.amount_crypto) if p.amount_crypto else None,
+                "dest_address": p.dest_address,
+                "status": p.status.value,
+                "tx_hash": p.tx_hash,
+                "error_message": p.error_message,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in payouts.items
+        ],
+        "pagination": {
+            "page": payouts.page,
+            "per_page": payouts.per_page,
+            "total": payouts.total,
+            "pages": payouts.pages,
+        }
+    }

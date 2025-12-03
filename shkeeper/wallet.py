@@ -45,6 +45,14 @@ from shkeeper.models import (
     ExchangeRate,
     InvoiceStatus,
     Transaction,
+    # Multi-tenant models
+    Merchant,
+    MerchantStatus,
+    MerchantBalance,
+    PlatformSettings,
+    CommissionRecord,
+    MerchantPayout,
+    MerchantPayoutStatus,
 )
 
 
@@ -600,3 +608,411 @@ def process_unlock():
         else:
             wallet_encryption.set_runtime_status(WalletEncryptionRuntimeStatus.fail)
         return redirect(url_for("wallet.show_unlock"))
+
+
+# ============================================================================
+# Admin Merchant Management Routes
+# ============================================================================
+
+@bp.route("/admin/merchants")
+@login_required
+def admin_merchants():
+    """List all merchants for admin management."""
+    merchants = Merchant.query.order_by(Merchant.created_at.desc()).all()
+
+    # Calculate totals
+    total_commission = db.session.query(db.func.sum(CommissionRecord.commission_amount)).scalar() or 0
+    total_merchants = Merchant.query.count()
+    active_merchants = Merchant.query.filter_by(status=MerchantStatus.ACTIVE).count()
+
+    return render_template(
+        "admin/merchants.j2",
+        merchants=merchants,
+        total_commission=total_commission,
+        total_merchants=total_merchants,
+        active_merchants=active_merchants,
+    )
+
+
+@bp.route("/admin/merchants/<int:merchant_id>")
+@login_required
+def admin_merchant_detail(merchant_id):
+    """View merchant details."""
+    merchant = Merchant.query.get_or_404(merchant_id)
+    platform_settings = PlatformSettings.get()
+    balances = MerchantBalance.query.filter_by(merchant_id=merchant_id).all()
+    recent_invoices = Invoice.query.filter_by(merchant_id=merchant_id).order_by(Invoice.created_at.desc()).limit(10).all()
+    recent_payouts = MerchantPayout.query.filter_by(merchant_id=merchant_id).order_by(MerchantPayout.created_at.desc()).limit(10).all()
+
+    # Calculate stats
+    total_invoices = Invoice.query.filter_by(merchant_id=merchant_id).count()
+    paid_invoices = Invoice.query.filter_by(merchant_id=merchant_id).filter(
+        Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.PAID_EXPIRED])
+    ).count()
+    total_volume = db.session.query(db.func.sum(Invoice.fiat)).filter(
+        Invoice.merchant_id == merchant_id,
+        Invoice.status.in_([InvoiceStatus.PAID, InvoiceStatus.PAID_EXPIRED])
+    ).scalar() or 0
+    commission_earned = db.session.query(db.func.sum(CommissionRecord.commission_amount)).filter_by(
+        merchant_id=merchant_id
+    ).scalar() or 0
+
+    stats = {
+        "total_invoices": total_invoices,
+        "paid_invoices": paid_invoices,
+        "total_volume": total_volume,
+        "commission_earned": commission_earned,
+    }
+
+    return render_template(
+        "admin/merchant_detail.j2",
+        merchant=merchant,
+        platform_settings=platform_settings,
+        balances=balances,
+        recent_invoices=recent_invoices,
+        recent_payouts=recent_payouts,
+        stats=stats,
+    )
+
+
+@bp.route("/admin/merchants/<int:merchant_id>/suspend", methods=["POST"])
+@login_required
+def admin_suspend_merchant(merchant_id):
+    """Suspend a merchant."""
+    merchant = Merchant.query.get_or_404(merchant_id)
+    merchant.status = MerchantStatus.SUSPENDED
+    db.session.commit()
+    flash(f"Merchant '{merchant.name}' has been suspended.")
+    return redirect(url_for("wallet.admin_merchants"))
+
+
+@bp.route("/admin/merchants/<int:merchant_id>/activate", methods=["POST"])
+@login_required
+def admin_activate_merchant(merchant_id):
+    """Activate/reactivate a merchant."""
+    merchant = Merchant.query.get_or_404(merchant_id)
+    merchant.status = MerchantStatus.ACTIVE
+    db.session.commit()
+    flash(f"Merchant '{merchant.name}' has been activated.")
+    return redirect(url_for("wallet.admin_merchants"))
+
+
+@bp.route("/admin/settings", methods=["GET", "POST"])
+@login_required
+def admin_platform_settings():
+    """Manage platform settings (commission, etc.)."""
+    settings = PlatformSettings.get()
+
+    if request.method == "POST":
+        try:
+            settings.default_commission_percent = Decimal(request.form.get("commission_percent", "2.0"))
+            settings.default_commission_fixed = Decimal(request.form.get("commission_fixed", "0"))
+            settings.min_payout_amount = Decimal(request.form.get("min_payout", "50"))
+            settings.auto_approve_merchants = request.form.get("auto_approve") == "on"
+            db.session.commit()
+            flash("Platform settings updated successfully.")
+        except (InvalidOperation, ValueError) as e:
+            flash(f"Invalid value: {e}")
+
+        return redirect(url_for("wallet.admin_platform_settings"))
+
+    return render_template("admin/platform_settings.j2", settings=settings)
+
+
+@bp.route("/admin/commissions")
+@login_required
+def admin_commissions():
+    """View commission reports."""
+    from datetime import datetime, timedelta
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 50
+
+    query = CommissionRecord.query
+
+    # Apply filters
+    merchant_id = request.args.get("merchant_id", type=int)
+    crypto = request.args.get("crypto")
+    from_date = request.args.get("from_date")
+    to_date = request.args.get("to_date")
+
+    if merchant_id:
+        query = query.filter_by(merchant_id=merchant_id)
+    if crypto:
+        query = query.filter_by(crypto=crypto)
+    if from_date:
+        try:
+            from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+            query = query.filter(CommissionRecord.created_at >= from_dt)
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+            query = query.filter(CommissionRecord.created_at <= to_dt)
+        except ValueError:
+            pass
+
+    records = query.order_by(CommissionRecord.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Calculate stats
+    total_commission = db.session.query(db.func.sum(CommissionRecord.commission_amount)).scalar() or 0
+    total_records = CommissionRecord.query.count()
+
+    # This month
+    month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_commission = db.session.query(db.func.sum(CommissionRecord.commission_amount)).filter(
+        CommissionRecord.created_at >= month_start
+    ).scalar() or 0
+
+    # Today
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_commission = db.session.query(db.func.sum(CommissionRecord.commission_amount)).filter(
+        CommissionRecord.created_at >= today_start
+    ).scalar() or 0
+
+    stats = {
+        "total_commission": total_commission,
+        "month_commission": month_commission,
+        "today_commission": today_commission,
+        "total_records": total_records,
+    }
+
+    # Get all merchants for filter dropdown
+    merchants = Merchant.query.order_by(Merchant.name).all()
+
+    return render_template(
+        "admin/commissions.j2",
+        records=records,
+        stats=stats,
+        merchants=merchants,
+    )
+
+
+@bp.route("/admin/payouts")
+@login_required
+def admin_merchant_payouts():
+    """View and manage merchant payout requests."""
+    status_filter = request.args.get("status")
+    merchant_id = request.args.get("merchant_id", type=int)
+    crypto = request.args.get("crypto")
+    page = request.args.get("page", 1, type=int)
+    per_page = 50
+
+    query = MerchantPayout.query
+
+    if status_filter:
+        try:
+            status = MerchantPayoutStatus(status_filter)
+            query = query.filter_by(status=status)
+        except ValueError:
+            pass
+    if merchant_id:
+        query = query.filter_by(merchant_id=merchant_id)
+    if crypto:
+        query = query.filter_by(crypto=crypto)
+
+    payouts = query.order_by(MerchantPayout.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Calculate stats
+    pending_payouts = MerchantPayout.query.filter_by(status=MerchantPayoutStatus.PENDING)
+    processing_payouts = MerchantPayout.query.filter(
+        MerchantPayout.status.in_([MerchantPayoutStatus.APPROVED, MerchantPayoutStatus.PROCESSING])
+    )
+    completed_payouts = MerchantPayout.query.filter_by(status=MerchantPayoutStatus.COMPLETED)
+    failed_payouts = MerchantPayout.query.filter(
+        MerchantPayout.status.in_([MerchantPayoutStatus.FAILED, MerchantPayoutStatus.REJECTED])
+    )
+
+    stats = {
+        "pending_count": pending_payouts.count(),
+        "pending_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
+            MerchantPayout.status == MerchantPayoutStatus.PENDING
+        ).scalar() or 0,
+        "processing_count": processing_payouts.count(),
+        "processing_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
+            MerchantPayout.status.in_([MerchantPayoutStatus.APPROVED, MerchantPayoutStatus.PROCESSING])
+        ).scalar() or 0,
+        "completed_count": completed_payouts.count(),
+        "completed_amount": db.session.query(db.func.sum(MerchantPayout.amount_fiat)).filter(
+            MerchantPayout.status == MerchantPayoutStatus.COMPLETED
+        ).scalar() or 0,
+        "failed_count": failed_payouts.count(),
+    }
+
+    # Get all merchants for filter dropdown
+    merchants = Merchant.query.order_by(Merchant.name).all()
+
+    return render_template(
+        "admin/merchant_payouts.j2",
+        payouts=payouts,
+        stats=stats,
+        merchants=merchants,
+        status_filter=status_filter,
+    )
+
+
+@bp.route("/admin/payouts/<int:payout_id>/approve", methods=["POST"])
+@login_required
+def admin_approve_payout(payout_id):
+    """Approve a pending payout request."""
+    payout = MerchantPayout.query.get_or_404(payout_id)
+
+    if payout.status != MerchantPayoutStatus.PENDING:
+        flash("This payout is not in pending status.")
+        return redirect(url_for("wallet.admin_merchant_payouts"))
+
+    payout.status = MerchantPayoutStatus.APPROVED
+    db.session.commit()
+    flash(f"Payout #{payout.id} has been approved.")
+    return redirect(url_for("wallet.admin_merchant_payouts"))
+
+
+@bp.route("/admin/payouts/<int:payout_id>/reject", methods=["POST"])
+@login_required
+def admin_reject_payout(payout_id):
+    """Reject a payout request."""
+    payout = MerchantPayout.query.get_or_404(payout_id)
+
+    if payout.status not in (MerchantPayoutStatus.PENDING, MerchantPayoutStatus.APPROVED):
+        flash("This payout cannot be rejected.")
+        return redirect(url_for("wallet.admin_merchant_payouts"))
+
+    # Return balance to merchant
+    balance = MerchantBalance.query.filter_by(
+        merchant_id=payout.merchant_id,
+        crypto=payout.crypto
+    ).first()
+    if balance:
+        balance.pending_balance = (balance.pending_balance or 0) - payout.amount_fiat
+        balance.available_balance = (balance.available_balance or 0) + payout.amount_fiat
+
+    payout.status = MerchantPayoutStatus.REJECTED
+    payout.error_message = request.form.get("reason", "Rejected by admin")
+    db.session.commit()
+    flash(f"Payout #{payout.id} has been rejected.")
+    return redirect(url_for("wallet.admin_merchant_payouts"))
+
+
+@bp.route("/admin/payouts/<int:payout_id>/process", methods=["POST"])
+@login_required
+def admin_process_payout(payout_id):
+    """Process an approved payout - sends crypto to merchant."""
+    from shkeeper.merchant_payout_service import process_payout
+
+    payout = MerchantPayout.query.get_or_404(payout_id)
+
+    if payout.status != MerchantPayoutStatus.APPROVED:
+        flash("This payout must be approved before processing.")
+        return redirect(url_for("wallet.admin_merchant_payouts"))
+
+    success, message = process_payout(payout_id)
+
+    if success:
+        flash(f"Payout #{payout.id} completed successfully. {message}")
+    else:
+        flash(f"Payout #{payout.id} failed: {message}")
+
+    return redirect(url_for("wallet.admin_merchant_payouts"))
+
+
+@bp.route("/admin/payouts/<int:payout_id>/retry", methods=["POST"])
+@login_required
+def admin_retry_payout(payout_id):
+    """Retry a failed payout."""
+    payout = MerchantPayout.query.get_or_404(payout_id)
+
+    if payout.status != MerchantPayoutStatus.FAILED:
+        flash("Only failed payouts can be retried.")
+        return redirect(url_for("wallet.admin_merchant_payouts"))
+
+    payout.status = MerchantPayoutStatus.APPROVED
+    payout.error_message = None
+    db.session.commit()
+    flash(f"Payout #{payout.id} has been queued for retry.")
+    return redirect(url_for("wallet.admin_merchant_payouts"))
+
+
+@bp.route("/admin/merchants/<int:merchant_id>/commission", methods=["POST"])
+@login_required
+def admin_update_merchant_commission(merchant_id):
+    """Update a merchant's commission settings."""
+    merchant = Merchant.query.get_or_404(merchant_id)
+
+    try:
+        commission_percent = request.form.get("commission_percent", "").strip()
+        commission_fixed = request.form.get("commission_fixed", "").strip()
+
+        merchant.commission_percent = Decimal(commission_percent) if commission_percent else None
+        merchant.commission_fixed = Decimal(commission_fixed) if commission_fixed else Decimal(0)
+        db.session.commit()
+        flash(f"Commission settings updated for '{merchant.name}'.")
+    except (InvalidOperation, ValueError) as e:
+        flash(f"Invalid value: {e}")
+
+    return redirect(url_for("wallet.admin_merchant_detail", merchant_id=merchant_id))
+
+
+@bp.route("/admin/commissions/export")
+@login_required
+def admin_export_commissions():
+    """Export commission records to CSV."""
+    from datetime import datetime
+
+    query = CommissionRecord.query
+
+    # Apply filters
+    merchant_id = request.args.get("merchant_id", type=int)
+    crypto = request.args.get("crypto")
+    from_date = request.args.get("from_date")
+    to_date = request.args.get("to_date")
+
+    if merchant_id:
+        query = query.filter_by(merchant_id=merchant_id)
+    if crypto:
+        query = query.filter_by(crypto=crypto)
+    if from_date:
+        try:
+            from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+            query = query.filter(CommissionRecord.created_at >= from_dt)
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+            query = query.filter(CommissionRecord.created_at <= to_dt)
+        except ValueError:
+            pass
+
+    records = query.order_by(CommissionRecord.created_at.desc()).all()
+
+    # Build CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Merchant", "Invoice ID", "TX Hash", "Currency", "Gross Amount", "Commission %", "Commission Fixed", "Commission Amount", "Date"])
+
+    for record in records:
+        merchant_name = record.merchant.name if record.merchant else "N/A"
+        writer.writerow([
+            record.id,
+            merchant_name,
+            record.invoice_id or "",
+            record.tx_hash or "",
+            record.crypto,
+            f"{record.gross_amount:.2f}",
+            f"{record.commission_percent:.2f}",
+            f"{record.commission_fixed:.2f}" if record.commission_fixed else "0.00",
+            f"{record.commission_amount:.2f}",
+            record.created_at.strftime("%Y-%m-%d %H:%M:%S") if record.created_at else "",
+        ])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=commissions_{datetime.now().strftime('%Y%m%d')}.csv"}
+    )

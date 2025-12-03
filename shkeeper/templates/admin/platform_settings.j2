@@ -1,0 +1,79 @@
+{% extends 'wallet/page.j2' %}
+
+{% block page %}
+<div class="container-fluid">
+  <h2 class="mb-4">Platform Settings</h2>
+
+  <div class="mb-4">
+    <a href="{{ url_for('wallet.admin_merchants') }}" class="btn btn-outline-secondary">Back to Merchants</a>
+  </div>
+
+  <form method="post">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Commission Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Default Commission Percentage</label>
+            <div class="input-group">
+              <input type="number" name="commission_percent" class="form-control"
+                     value="{{ settings.default_commission_percent }}"
+                     min="0" max="50" step="0.01">
+              <span class="input-group-text">%</span>
+            </div>
+            <small class="text-muted">Commission percentage charged on each transaction (0-50%)</small>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Fixed Commission Fee</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" name="commission_fixed" class="form-control"
+                     value="{{ settings.default_commission_fixed }}"
+                     min="0" step="0.01">
+            </div>
+            <small class="text-muted">Additional fixed fee per transaction (in USD)</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Payout Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Minimum Payout Amount</label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="number" name="min_payout" class="form-control"
+                   value="{{ settings.min_payout_amount }}"
+                   min="1" step="1">
+          </div>
+          <small class="text-muted">Minimum balance required for merchants to request a payout</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Merchant Registration</h5>
+      </div>
+      <div class="card-body">
+        <div class="form-check">
+          <input type="checkbox" name="auto_approve" class="form-check-input" id="auto_approve"
+                 {% if settings.auto_approve_merchants %}checked{% endif %}>
+          <label class="form-check-label" for="auto_approve">Auto-approve new merchant registrations</label>
+        </div>
+        <small class="text-muted">If disabled, new merchants will need manual approval before they can create invoices.</small>
+      </div>
+    </div>
+
+    <div class="d-grid">
+      <button type="submit" class="btn btn-primary btn-lg">Save Settings</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,523 @@
+{% extends 'merchant/base.j2' %}
+
+{% block title %}API Documentation{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-3">
+    <!-- Sidebar Navigation -->
+    <nav class="docs-nav sticky-top" style="top: 20px;">
+      <h6 class="text-muted mb-3">DOCUMENTATION</h6>
+      <ul class="nav flex-column">
+        <li class="nav-item"><a class="nav-link" href="#getting-started">Getting Started</a></li>
+        <li class="nav-item"><a class="nav-link" href="#authentication">Authentication</a></li>
+        <li class="nav-item"><a class="nav-link" href="#payment-widget">Payment Widget</a></li>
+        <li class="nav-item"><a class="nav-link" href="#api-reference">API Reference</a></li>
+        <li class="nav-item"><a class="nav-link" href="#webhooks">Webhooks</a></li>
+        <li class="nav-item"><a class="nav-link" href="#testing">Testing</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <div class="col-lg-9">
+    <!-- Getting Started -->
+    <section id="getting-started" class="mb-5">
+      <h2>Getting Started</h2>
+      <p class="lead">Accept cryptocurrency payments in minutes with our simple API and embeddable widget.</p>
+
+      <div class="card mb-4">
+        <div class="card-header">Quick Start Steps</div>
+        <div class="card-body">
+          <ol>
+            <li><strong>Get your API Key</strong> - Find it on the <a href="{{ url_for('merchant_auth.api_keys') }}">API Keys page</a></li>
+            <li><strong>Choose integration method</strong>:
+              <ul>
+                <li><strong>Payment Widget</strong> (easiest) - Add a few lines of JavaScript</li>
+                <li><strong>API Integration</strong> - Full control over the payment flow</li>
+              </ul>
+            </li>
+            <li><strong>Set up webhooks</strong> - Receive payment notifications</li>
+            <li><strong>Go live!</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <strong>Your API Key:</strong>
+        <code id="api-key-display">{{ merchant.api_key }}</code>
+        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('api-key-display')">Copy</button>
+      </div>
+    </section>
+
+    <!-- Authentication -->
+    <section id="authentication" class="mb-5">
+      <h2>Authentication</h2>
+      <p>All API requests require authentication using your API key in the request header.</p>
+
+      <div class="card">
+        <div class="card-header">HTTP Header</div>
+        <div class="card-body">
+          <pre class="bg-dark text-light p-3 rounded"><code>X-Shkeeper-Api-Key: {{ merchant.api_key }}</code></pre>
+        </div>
+      </div>
+
+      <h5 class="mt-4">Example Request (cURL)</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>curl -X POST "{{ base_url }}/api/v1/BTC/payment_request" \
+  -H "Content-Type: application/json" \
+  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+  -d '{"amount": 99.99, "fiat": "USD", "external_id": "order-123"}'</code></pre>
+    </section>
+
+    <!-- Payment Widget -->
+    <section id="payment-widget" class="mb-5">
+      <h2>Payment Widget</h2>
+      <p>The easiest way to accept payments. Just add a few lines of code to your website.</p>
+
+      <h5>1. Include the Widget Script</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>&lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;</code></pre>
+
+      <h5 class="mt-4">2. Initialize the Widget</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>&lt;script&gt;
+SHKeeper.init({
+  apiKey: '{{ merchant.api_key }}',
+  baseUrl: '{{ base_url }}'
+});
+&lt;/script&gt;</code></pre>
+
+      <h5 class="mt-4">3. Create a Payment Button</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>&lt;!-- Container for the payment button --&gt;
+&lt;div id="pay-button"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+SHKeeper.createButton('#pay-button', {
+  amount: 99.99,           // Amount in fiat currency
+  currency: 'USD',         // Fiat currency
+  crypto: 'BTC',           // Cryptocurrency to accept
+  orderId: 'order-123',    // Your unique order ID
+  callbackUrl: 'https://your-site.com/webhook',  // Optional
+
+  // Callbacks
+  onSuccess: function(invoice) {
+    console.log('Payment created:', invoice);
+  },
+  onPaymentComplete: function(invoice) {
+    console.log('Payment received:', invoice);
+    // Redirect to thank you page or update UI
+    window.location.href = '/thank-you?order=' + invoice.external_id;
+  },
+  onError: function(error) {
+    console.error('Payment error:', error);
+  }
+});
+&lt;/script&gt;</code></pre>
+
+      <h5 class="mt-4">4. Or Open Modal Programmatically</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>&lt;button onclick="payWithCrypto()"&gt;Pay Now&lt;/button&gt;
+
+&lt;script&gt;
+function payWithCrypto() {
+  SHKeeper.openPaymentModal({
+    amount: 99.99,
+    currency: 'USD',
+    crypto: 'BTC',
+    orderId: 'order-' + Date.now(),
+    onPaymentComplete: function(invoice) {
+      alert('Payment received! Thank you.');
+    }
+  });
+}
+&lt;/script&gt;</code></pre>
+
+      <div class="card mt-4">
+        <div class="card-header">Live Demo</div>
+        <div class="card-body text-center">
+          <p>Click the button below to see the widget in action (test mode):</p>
+          <div id="demo-button"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Reference -->
+    <section id="api-reference" class="mb-5">
+      <h2>API Reference</h2>
+
+      <!-- Create Payment -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="badge bg-success me-2">POST</span>
+          <code>/api/v1/{crypto}/payment_request</code>
+        </div>
+        <div class="card-body">
+          <h6>Create a Payment Invoice</h6>
+          <p>Creates a new payment invoice for the specified cryptocurrency.</p>
+
+          <h6 class="mt-3">Path Parameters</h6>
+          <table class="table table-sm">
+            <tr><td><code>crypto</code></td><td>Cryptocurrency symbol (BTC, ETH, LTC, XMR, USDT-TRC20, etc.)</td></tr>
+          </table>
+
+          <h6 class="mt-3">Request Body</h6>
+          <pre class="bg-light p-3 rounded"><code>{
+  "amount": 99.99,                    // Required: Amount in fiat
+  "fiat": "USD",                      // Required: Fiat currency
+  "external_id": "order-123",         // Optional: Your order reference
+  "callback_url": "https://..."       // Optional: Webhook URL
+}</code></pre>
+
+          <h6 class="mt-3">Response</h6>
+          <pre class="bg-light p-3 rounded"><code>{
+  "id": 12345,                        // Invoice ID
+  "status": "pending",
+  "dest": "bc1q...",                  // Payment address
+  "amount_crypto": "0.00234500",      // Amount in crypto
+  "amount": 99.99,                    // Amount in fiat
+  "wallet": "BTC",
+  "external_id": "order-123",
+  "expires_at": "2024-01-15T12:30:00Z"
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- Get Invoice -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="badge bg-primary me-2">GET</span>
+          <code>/api/v1/invoices/{id}</code>
+        </div>
+        <div class="card-body">
+          <h6>Get Invoice Status</h6>
+          <p>Retrieve the current status of an invoice.</p>
+
+          <h6 class="mt-3">Response</h6>
+          <pre class="bg-light p-3 rounded"><code>{
+  "id": 12345,
+  "status": "paid",                   // pending, paid, expired, paid-expired
+  "dest": "bc1q...",
+  "amount_crypto": "0.00234500",
+  "balance_crypto": "0.00234500",     // Amount received
+  "balance_fiat": 99.99,
+  "external_id": "order-123",
+  "transactions": [...]               // List of transactions
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- List Invoices -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="badge bg-primary me-2">GET</span>
+          <code>/api/v1/invoices</code>
+        </div>
+        <div class="card-body">
+          <h6>List All Invoices</h6>
+          <p>Retrieve all invoices for your merchant account.</p>
+        </div>
+      </div>
+
+      <!-- Get Balance -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="badge bg-primary me-2">GET</span>
+          <code>/api/v1/merchant/balance</code>
+        </div>
+        <div class="card-body">
+          <h6>Get Merchant Balance</h6>
+          <p>Retrieve your current balance for all cryptocurrencies.</p>
+
+          <h6 class="mt-3">Response</h6>
+          <pre class="bg-light p-3 rounded"><code>{
+  "status": "success",
+  "balances": [
+    {
+      "crypto": "BTC",
+      "total_received": "1500.00",
+      "total_commission": "30.00",
+      "available_balance": "1470.00",
+      "pending_balance": "0.00"
+    }
+  ]
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- Request Payout -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="badge bg-success me-2">POST</span>
+          <code>/api/v1/merchant/payout</code>
+        </div>
+        <div class="card-body">
+          <h6>Request Payout</h6>
+          <p>Request a withdrawal of your available balance.</p>
+
+          <h6 class="mt-3">Request Body</h6>
+          <pre class="bg-light p-3 rounded"><code>{
+  "crypto": "BTC",          // Required: Cryptocurrency
+  "amount": 500.00          // Optional: Amount in USD (0 = withdraw all)
+}</code></pre>
+
+          <div class="alert alert-warning mt-3">
+            <strong>Note:</strong> You must configure your payout address in <a href="{{ url_for('merchant_auth.settings') }}">Settings</a> before requesting payouts.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Webhooks -->
+    <section id="webhooks" class="mb-5">
+      <h2>Webhooks (Callbacks)</h2>
+      <p>Receive real-time notifications when payments are received.</p>
+
+      <h5>Setting Up Webhooks</h5>
+      <ol>
+        <li>Configure your default callback URL in <a href="{{ url_for('merchant_auth.settings') }}">Settings</a></li>
+        <li>Or specify a callback URL per invoice when creating it</li>
+      </ol>
+
+      <h5 class="mt-4">Webhook Payload</h5>
+      <p>When a payment is received, we'll POST the following JSON to your callback URL:</p>
+      <pre class="bg-light p-3 rounded"><code>{
+  "external_id": "order-123",
+  "crypto": "BTC",
+  "addr": "bc1q...",
+  "txid": "abc123...",
+  "amount": "0.00234500",
+  "confirmations": 1,
+  "status": "paid",
+
+  // Commission info (after platform fee)
+  "fiat_amount": 99.99,
+  "commission_amount": 2.00,
+  "net_amount": 97.99
+}</code></pre>
+
+      <h5 class="mt-4">Webhook Security</h5>
+      <p>We recommend verifying webhook requests:</p>
+      <ul>
+        <li>Check the source IP matches our servers</li>
+        <li>Verify the transaction exists by calling our API</li>
+        <li>Store and check webhook IDs to prevent replay attacks</li>
+      </ul>
+
+      <h5 class="mt-4">Responding to Webhooks</h5>
+      <p>Your endpoint should:</p>
+      <ul>
+        <li>Return HTTP 200 status code to acknowledge receipt</li>
+        <li>Process quickly (< 5 seconds) - do heavy work asynchronously</li>
+        <li>Be idempotent - we may retry failed webhooks</li>
+      </ul>
+    </section>
+
+    <!-- Testing -->
+    <section id="testing" class="mb-5">
+      <h2>Testing</h2>
+
+      <h5>Test Your Integration</h5>
+      <p>Use these tools to test your integration:</p>
+
+      <div class="card mb-3">
+        <div class="card-header">Test Webhook Endpoint</div>
+        <div class="card-body">
+          <p>Use a service like <a href="https://webhook.site" target="_blank">webhook.site</a> to test receiving webhooks before implementing your own endpoint.</p>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">Test API Call</div>
+        <div class="card-body">
+          <pre class="bg-dark text-light p-3 rounded"><code># Create a test invoice
+curl -X POST "{{ base_url }}/api/v1/BTC/payment_request" \
+  -H "Content-Type: application/json" \
+  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+  -d '{
+    "amount": 1.00,
+    "fiat": "USD",
+    "external_id": "test-'$(date +%s)'"
+  }'</code></pre>
+        </div>
+      </div>
+
+      <h5 class="mt-4">Supported Cryptocurrencies</h5>
+      <div class="row">
+        {% for crypto in cryptos %}
+        <div class="col-md-4 mb-2">
+          <div class="card">
+            <div class="card-body py-2">
+              <strong>{{ crypto }}</strong>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Code Examples -->
+    <section id="code-examples" class="mb-5">
+      <h2>Code Examples</h2>
+
+      <ul class="nav nav-tabs" id="codeTabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#python">Python</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#nodejs">Node.js</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#php">PHP</a></li>
+      </ul>
+
+      <div class="tab-content mt-3">
+        <div class="tab-pane fade show active" id="python">
+          <pre class="bg-dark text-light p-3 rounded"><code>import requests
+
+API_KEY = "{{ merchant.api_key }}"
+BASE_URL = "{{ base_url }}"
+
+def create_invoice(amount, currency="USD", crypto="BTC", order_id=None):
+    response = requests.post(
+        f"{BASE_URL}/api/v1/{crypto}/payment_request",
+        headers={
+            "Content-Type": "application/json",
+            "X-Shkeeper-Api-Key": API_KEY
+        },
+        json={
+            "amount": amount,
+            "fiat": currency,
+            "external_id": order_id
+        }
+    )
+    return response.json()
+
+def get_invoice(invoice_id):
+    response = requests.get(
+        f"{BASE_URL}/api/v1/invoices/{invoice_id}",
+        headers={"X-Shkeeper-Api-Key": API_KEY}
+    )
+    return response.json()
+
+# Create an invoice
+invoice = create_invoice(99.99, order_id="order-123")
+print(f"Payment address: {invoice['dest']}")
+print(f"Amount: {invoice['amount_crypto']} BTC")</code></pre>
+        </div>
+
+        <div class="tab-pane fade" id="nodejs">
+          <pre class="bg-dark text-light p-3 rounded"><code>const axios = require('axios');
+
+const API_KEY = '{{ merchant.api_key }}';
+const BASE_URL = '{{ base_url }}';
+
+async function createInvoice(amount, currency = 'USD', crypto = 'BTC', orderId = null) {
+  const response = await axios.post(
+    `${BASE_URL}/api/v1/${crypto}/payment_request`,
+    {
+      amount: amount,
+      fiat: currency,
+      external_id: orderId
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shkeeper-Api-Key': API_KEY
+      }
+    }
+  );
+  return response.data;
+}
+
+async function getInvoice(invoiceId) {
+  const response = await axios.get(
+    `${BASE_URL}/api/v1/invoices/${invoiceId}`,
+    { headers: { 'X-Shkeeper-Api-Key': API_KEY } }
+  );
+  return response.data;
+}
+
+// Usage
+const invoice = await createInvoice(99.99, 'USD', 'BTC', 'order-123');
+console.log(`Payment address: ${invoice.dest}`);
+console.log(`Amount: ${invoice.amount_crypto} BTC`);</code></pre>
+        </div>
+
+        <div class="tab-pane fade" id="php">
+          <pre class="bg-dark text-light p-3 rounded"><code>&lt;?php
+
+$API_KEY = '{{ merchant.api_key }}';
+$BASE_URL = '{{ base_url }}';
+
+function createInvoice($amount, $currency = 'USD', $crypto = 'BTC', $orderId = null) {
+    global $API_KEY, $BASE_URL;
+
+    $ch = curl_init("$BASE_URL/api/v1/$crypto/payment_request");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        "X-Shkeeper-Api-Key: $API_KEY"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'amount' => $amount,
+        'fiat' => $currency,
+        'external_id' => $orderId
+    ]));
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($response, true);
+}
+
+function getInvoice($invoiceId) {
+    global $API_KEY, $BASE_URL;
+
+    $ch = curl_init("$BASE_URL/api/v1/invoices/$invoiceId");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "X-Shkeeper-Api-Key: $API_KEY"
+    ]);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($response, true);
+}
+
+// Usage
+$invoice = createInvoice(99.99, 'USD', 'BTC', 'order-123');
+echo "Payment address: " . $invoice['dest'] . "\n";
+echo "Amount: " . $invoice['amount_crypto'] . " BTC\n";
+?&gt;</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+function copyToClipboard(elementId) {
+  var text = document.getElementById(elementId).textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    alert('Copied to clipboard!');
+  });
+}
+
+// Initialize demo widget if available
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof SHKeeper !== 'undefined') {
+    SHKeeper.init({
+      apiKey: '{{ merchant.api_key }}',
+      baseUrl: '{{ base_url }}'
+    });
+
+    SHKeeper.createButton('#demo-button', {
+      amount: 1.00,
+      currency: 'USD',
+      crypto: 'BTC',
+      buttonText: 'Try Demo Payment ($1.00)',
+      orderId: 'demo-' + Date.now(),
+      onSuccess: function(data) {
+        console.log('Demo payment created:', data);
+      }
+    });
+  }
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/shkeeper-widget.js') }}"></script>
+{% endblock %}

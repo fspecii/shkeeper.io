@@ -1,0 +1,87 @@
+{% extends 'base.j2' %}
+
+{% block body %}
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" style="min-height: 100vh;">
+      <div class="position-sticky pt-3">
+        <div class="text-center mb-4">
+          <h5 class="text-primary">TorPay Merchant</h5>
+          {% if current_merchant %}
+          <small class="text-muted">{{ current_merchant.name }}</small>
+          {% endif %}
+        </div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.dashboard' %}active{% endif %}" href="{{ url_for('merchant_auth.dashboard') }}">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.transactions' %}active{% endif %}" href="{{ url_for('merchant_auth.transactions') }}">
+              Transactions
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.balances' %}active{% endif %}" href="{{ url_for('merchant_auth.balances') }}">
+              Balances
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.payouts' %}active{% endif %}" href="{{ url_for('merchant_auth.payouts') }}">
+              Payouts
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.api_keys' %}active{% endif %}" href="{{ url_for('merchant_auth.api_keys') }}">
+              API Keys
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.settings' %}active{% endif %}" href="{{ url_for('merchant_auth.settings') }}">
+              Settings
+            </a>
+          </li>
+
+          <li class="nav-item mt-3">
+            <small class="nav-link text-muted text-uppercase">Developer</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.integration' %}active{% endif %}" href="{{ url_for('merchant_auth.integration') }}">
+              Integration
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'merchant_auth.docs' %}active{% endif %}" href="{{ url_for('merchant_auth.docs') }}">
+              API Docs
+            </a>
+          </li>
+
+          <li class="nav-item mt-4">
+            <a class="nav-link text-danger" href="{{ url_for('merchant_auth.logout') }}">
+              Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{% block title %}{% endblock %}</h1>
+      </div>
+
+      {% for message in get_flashed_messages() %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

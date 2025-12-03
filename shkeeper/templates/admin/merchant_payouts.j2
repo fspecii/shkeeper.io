@@ -1,0 +1,215 @@
+{% extends 'wallet/page.j2' %}
+
+{% block page %}
+<div class="container-fluid">
+  <h2 class="mb-4">Merchant Payouts</h2>
+
+  <div class="mb-4">
+    <a href="{{ url_for('wallet.admin_merchants') }}" class="btn btn-outline-secondary">Back to Merchants</a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Pending Approval</h5>
+          <h2 class="text-warning">{{ stats.pending_count }}</h2>
+          <small class="text-muted">${{ "%.2f"|format(stats.pending_amount|float) }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Processing</h5>
+          <h2 class="text-primary">{{ stats.processing_count }}</h2>
+          <small class="text-muted">${{ "%.2f"|format(stats.processing_amount|float) }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Completed</h5>
+          <h2 class="text-success">{{ stats.completed_count }}</h2>
+          <small class="text-muted">${{ "%.2f"|format(stats.completed_amount|float) }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Failed/Rejected</h5>
+          <h2 class="text-danger">{{ stats.failed_count }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>Approved</option>
+            <option value="processing" {% if request.args.get('status') == 'processing' %}selected{% endif %}>Processing</option>
+            <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="failed" {% if request.args.get('status') == 'failed' %}selected{% endif %}>Failed</option>
+            <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Rejected</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Merchant</label>
+          <select name="merchant_id" class="form-select">
+            <option value="">All Merchants</option>
+            {% for m in merchants %}
+            <option value="{{ m.id }}" {% if request.args.get('merchant_id')|int == m.id %}selected{% endif %}>{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Currency</label>
+          <select name="crypto" class="form-select">
+            <option value="">All Currencies</option>
+            <option value="BTC" {% if request.args.get('crypto') == 'BTC' %}selected{% endif %}>BTC</option>
+            <option value="ETH" {% if request.args.get('crypto') == 'ETH' %}selected{% endif %}>ETH</option>
+            <option value="USDT-TRC20" {% if request.args.get('crypto') == 'USDT-TRC20' %}selected{% endif %}>USDT-TRC20</option>
+            <option value="XMR" {% if request.args.get('crypto') == 'XMR' %}selected{% endif %}>XMR</option>
+            <option value="LTC" {% if request.args.get('crypto') == 'LTC' %}selected{% endif %}>LTC</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary me-2">Filter</button>
+          <a href="{{ url_for('wallet.admin_merchant_payouts') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payouts Table -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Payout Requests</h5>
+    </div>
+    <div class="card-body">
+      {% if payouts.items %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Merchant</th>
+              <th>Currency</th>
+              <th>Amount</th>
+              <th>Destination</th>
+              <th>Status</th>
+              <th>TX Hash</th>
+              <th>Requested</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payout in payouts.items %}
+            <tr>
+              <td>{{ payout.id }}</td>
+              <td>
+                <a href="{{ url_for('wallet.admin_merchant_detail', merchant_id=payout.merchant_id) }}">{{ payout.merchant.name }}</a>
+              </td>
+              <td>{{ payout.crypto }}</td>
+              <td>${{ "%.2f"|format(payout.amount_fiat|float) }}</td>
+              <td>
+                <code title="{{ payout.dest_address }}" style="cursor: pointer;" onclick="navigator.clipboard.writeText('{{ payout.dest_address }}')">
+                  {{ payout.dest_address[:16] }}...
+                </code>
+              </td>
+              <td>
+                {% if payout.status.value == 'completed' %}
+                  <span class="badge bg-success">Completed</span>
+                {% elif payout.status.value == 'pending' %}
+                  <span class="badge bg-warning">Pending</span>
+                {% elif payout.status.value == 'approved' %}
+                  <span class="badge bg-info">Approved</span>
+                {% elif payout.status.value == 'processing' %}
+                  <span class="badge bg-primary">Processing</span>
+                {% elif payout.status.value == 'failed' %}
+                  <span class="badge bg-danger">Failed</span>
+                {% elif payout.status.value == 'rejected' %}
+                  <span class="badge bg-danger">Rejected</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ payout.status.value }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if payout.tx_hash %}
+                <code title="{{ payout.tx_hash }}">{{ payout.tx_hash[:12] }}...</code>
+                {% else %}
+                -
+                {% endif %}
+              </td>
+              <td>{{ payout.created_at.strftime('%Y-%m-%d %H:%M') if payout.created_at else 'N/A' }}</td>
+              <td>
+                {% if payout.status.value == 'pending' %}
+                  <form method="post" action="{{ url_for('wallet.admin_approve_payout', payout_id=payout.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this payout?');">Approve</button>
+                  </form>
+                  <form method="post" action="{{ url_for('wallet.admin_reject_payout', payout_id=payout.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this payout?');">Reject</button>
+                  </form>
+                {% elif payout.status.value == 'approved' %}
+                  <form method="post" action="{{ url_for('wallet.admin_process_payout', payout_id=payout.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Process this payout now?');">Process</button>
+                  </form>
+                {% elif payout.status.value == 'failed' %}
+                  <form method="post" action="{{ url_for('wallet.admin_retry_payout', payout_id=payout.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-warning">Retry</button>
+                  </form>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if payouts.pages > 1 %}
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          {% if payouts.has_prev %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('wallet.admin_merchant_payouts', page=payouts.prev_num, **request.args) }}">Previous</a>
+          </li>
+          {% endif %}
+
+          {% for page_num in payouts.iter_pages() %}
+            {% if page_num %}
+              <li class="page-item {% if page_num == payouts.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('wallet.admin_merchant_payouts', page=page_num, **request.args) }}">{{ page_num }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+          {% endfor %}
+
+          {% if payouts.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('wallet.admin_merchant_payouts', page=payouts.next_num, **request.args) }}">Next</a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+      {% else %}
+      <p class="text-muted text-center">No payout requests found.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

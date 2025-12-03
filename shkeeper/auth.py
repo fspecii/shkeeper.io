@@ -13,7 +13,7 @@ from flask import current_app as app
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
-from shkeeper.models import User, Wallet
+from shkeeper.models import User, Wallet, Merchant, MerchantStatus
 from shkeeper import db
 
 
@@ -82,17 +82,39 @@ def login_required(view):
 
 
 def api_key_required(view):
+    """
+    Decorator for API endpoints that require authentication.
+
+    Multi-tenant support:
+    - First tries to authenticate as a Merchant (for merchant API access)
+    - Falls back to legacy Wallet API key (for backward compatibility)
+
+    On success, sets g.merchant to the authenticated Merchant (or None for legacy).
+    """
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if "X-Shkeeper-Api-Key" not in request.headers:
-            return {"status": "error", "message": "No API key"}
+            return {"status": "error", "message": "No API key"}, 401
 
         apikey = request.headers["X-Shkeeper-Api-Key"]
+
+        # First, try to authenticate as a Merchant (multi-tenant mode)
+        merchant = Merchant.query.filter_by(api_key=apikey).first()
+        if merchant:
+            if merchant.status == MerchantStatus.SUSPENDED:
+                return {"status": "error", "message": "Merchant account suspended"}, 403
+            if merchant.status == MerchantStatus.PENDING:
+                return {"status": "error", "message": "Merchant account pending approval"}, 403
+            g.merchant = merchant
+            return view(**kwargs)
+
+        # Fall back to legacy Wallet API key (backward compatibility for admin)
         wallet = Wallet.query.filter_by(apikey=apikey).first()
         if wallet:
+            g.merchant = None  # No merchant context for legacy API
             return view(**kwargs)
-        else:
-            return {"status": "error", "message": "Bad API key"}
+
+        return {"status": "error", "message": "Invalid API key"}, 401
 
     return wrapped_view
 
@@ -181,3 +203,43 @@ def logout():
     """Clear the current session, including the stored user id."""
     session.clear()
     return redirect(url_for("auth.login"))
+
+
+# ============================================================================
+# Merchant Authentication (for merchant self-service dashboard)
+# ============================================================================
+
+def merchant_login_required(view):
+    """
+    View decorator for merchant-only pages.
+    Requires merchant to be logged in via session.
+    """
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if "merchant_id" not in session:
+            return redirect(url_for("merchant_auth.login"))
+
+        merchant = Merchant.query.get(session["merchant_id"])
+        if not merchant:
+            session.pop("merchant_id", None)
+            return redirect(url_for("merchant_auth.login"))
+
+        if merchant.status == MerchantStatus.SUSPENDED:
+            session.pop("merchant_id", None)
+            flash("Your account has been suspended. Please contact support.")
+            return redirect(url_for("merchant_auth.login"))
+
+        g.current_merchant = merchant
+        return view(**kwargs)
+
+    return wrapped_view
+
+
+@bp.before_app_request
+def load_logged_in_merchant():
+    """If a merchant id is stored in the session, load it into g.current_merchant."""
+    merchant_id = session.get("merchant_id")
+    if merchant_id:
+        g.current_merchant = Merchant.query.get(merchant_id)
+    else:
+        g.current_merchant = None

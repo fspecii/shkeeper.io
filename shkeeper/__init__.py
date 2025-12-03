@@ -152,6 +152,12 @@ def create_app(test_config=None):
             Invoice,
             ExchangeRate,
             Setting,
+            # Multi-tenant models
+            Merchant,
+            MerchantBalance,
+            PlatformSettings,
+            CommissionRecord,
+            MerchantPayout,
         )
 
         db.create_all()
@@ -222,12 +228,13 @@ def create_app(test_config=None):
     app.jinja_env.filters["format_decimal"] = format_decimal
 
     # apply the blueprints to the app
-    from . import auth, wallet, api_v1, callback
+    from . import auth, wallet, api_v1, callback, merchant_auth
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(wallet.bp)
     app.register_blueprint(api_v1.bp)
     app.register_blueprint(callback.bp)
+    app.register_blueprint(merchant_auth.bp)
     app.register_error_handler(500, internal_server_error)
     app.register_error_handler(404, page_not_found_error)
 

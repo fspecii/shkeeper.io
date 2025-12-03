@@ -1,0 +1,104 @@
+{% extends 'merchant/base.j2' %}
+
+{% block title %}API Keys{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">API Authentication</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">Use these credentials to authenticate API requests to create invoices and receive payment notifications.</p>
+
+        <div class="mb-4">
+          <label class="form-label"><strong>API Key</strong></label>
+          <div class="input-group">
+            <input type="text" class="form-control font-monospace" value="{{ merchant.api_key }}" id="api-key" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('api-key')">Copy</button>
+          </div>
+          <small class="text-muted">Include this in the <code>X-Shkeeper-Api-Key</code> header for all API requests.</small>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label"><strong>Webhook Secret</strong></label>
+          <div class="input-group">
+            <input type="text" class="form-control font-monospace" value="{{ merchant.webhook_secret }}" id="webhook-secret" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('webhook-secret')">Copy</button>
+          </div>
+          <small class="text-muted">Use this to verify webhook signatures from our server.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Regenerate Keys</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-danger">Warning: Regenerating keys will invalidate your current keys. Update your integration immediately after regenerating.</p>
+
+        <div class="d-flex gap-3">
+          <form method="post" action="{{ url_for('merchant_auth.regenerate_api_key') }}" onsubmit="return confirm('Are you sure you want to regenerate your API key? This will invalidate your current key.');">
+            <button type="submit" class="btn btn-warning">Regenerate API Key</button>
+          </form>
+
+          <form method="post" action="{{ url_for('merchant_auth.regenerate_webhook_secret') }}" onsubmit="return confirm('Are you sure you want to regenerate your webhook secret?');">
+            <button type="submit" class="btn btn-warning">Regenerate Webhook Secret</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">API Documentation</h5>
+      </div>
+      <div class="card-body">
+        <h6>Create Invoice</h6>
+        <pre class="bg-dark text-light p-3 rounded"><code>curl -X POST https://your-domain.com/api/v1/BTC/payment_request \
+  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_id": "order_123",
+    "fiat": "USD",
+    "amount": 99.99,
+    "callback_url": "https://your-site.com/webhook"
+  }'</code></pre>
+
+        <h6 class="mt-4">Response</h6>
+        <pre class="bg-dark text-light p-3 rounded"><code>{
+  "status": "success",
+  "id": 456,
+  "wallet": "bc1q...",
+  "amount": "0.00234",
+  "exchange_rate": "42735.00"
+}</code></pre>
+
+        <h6 class="mt-4">Webhook Notification</h6>
+        <pre class="bg-dark text-light p-3 rounded"><code>{
+  "external_id": "order_123",
+  "status": "PAID",
+  "balance_fiat": "99.99",
+  "commission_amount": "2.00",
+  "commission_percent": "2.0",
+  "net_amount": "97.99",
+  "crypto": "BTC",
+  "transactions": [...]
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyToClipboard(elementId) {
+  var copyText = document.getElementById(elementId);
+  copyText.select();
+  copyText.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(copyText.value);
+  alert('Copied to clipboard!');
+}
+</script>
+{% endblock %}

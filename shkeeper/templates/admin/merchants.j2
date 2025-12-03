@@ -1,0 +1,107 @@
+{% extends 'wallet/page.j2' %}
+
+{% block page %}
+<div class="container-fluid">
+  <h2 class="mb-4">Merchant Management</h2>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title text-muted">Total Merchants</h5>
+          <h2>{{ total_merchants }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title text-muted">Active Merchants</h5>
+          <h2 class="text-success">{{ active_merchants }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title text-muted">Total Commission Earned</h5>
+          <h2 class="text-primary">${{ "%.2f"|format(total_commission|float) }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="mb-4">
+    <a href="{{ url_for('wallet.admin_platform_settings') }}" class="btn btn-outline-primary">Platform Settings</a>
+    <a href="{{ url_for('wallet.admin_commissions') }}" class="btn btn-outline-primary">Commission Reports</a>
+    <a href="{{ url_for('wallet.admin_merchant_payouts') }}" class="btn btn-outline-primary">Merchant Payouts</a>
+  </div>
+
+  <!-- Merchants Table -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">All Merchants</h5>
+    </div>
+    <div class="card-body">
+      {% if merchants %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Commission Rate</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for merchant in merchants %}
+            <tr>
+              <td>{{ merchant.id }}</td>
+              <td><a href="{{ url_for('wallet.admin_merchant_detail', merchant_id=merchant.id) }}">{{ merchant.name }}</a></td>
+              <td>{{ merchant.email }}</td>
+              <td>
+                {% if merchant.status.value == 'active' %}
+                  <span class="badge bg-success">Active</span>
+                {% elif merchant.status.value == 'pending' %}
+                  <span class="badge bg-warning">Pending</span>
+                {% else %}
+                  <span class="badge bg-danger">Suspended</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if merchant.commission_percent %}
+                  {{ merchant.commission_percent }}% (custom)
+                {% else %}
+                  Default
+                {% endif %}
+              </td>
+              <td>{{ merchant.created_at.strftime('%Y-%m-%d') if merchant.created_at else 'N/A' }}</td>
+              <td>
+                {% if merchant.status.value == 'active' %}
+                  <form method="post" action="{{ url_for('wallet.admin_suspend_merchant', merchant_id=merchant.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Suspend this merchant?');">Suspend</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('wallet.admin_activate_merchant', merchant_id=merchant.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-success">Activate</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center">No merchants registered yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'merchant/base.j2' %}
+
+{% block title %}Balances{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title text-muted">Total Received (Gross)</h5>
+        <h2 class="text-primary">${{ "%.2f"|format(total_received|float) }}</h2>
+        <small class="text-muted">Total payments received before commission</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title text-muted">Total Commission Paid</h5>
+        <h2 class="text-danger">${{ "%.2f"|format(total_commission|float) }}</h2>
+        <small class="text-muted">Platform commission deducted from payments</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Balance by Currency</h5>
+  </div>
+  <div class="card-body">
+    {% if balances %}
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Currency</th>
+            <th class="text-end">Total Received</th>
+            <th class="text-end">Commission Paid</th>
+            <th class="text-end">Total Withdrawn</th>
+            <th class="text-end">Pending</th>
+            <th class="text-end">Available</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for balance in balances %}
+          <tr>
+            <td><strong>{{ balance.crypto }}</strong></td>
+            <td class="text-end">${{ "%.2f"|format(balance.total_received|float) }}</td>
+            <td class="text-end text-danger">${{ "%.2f"|format(balance.total_commission|float) }}</td>
+            <td class="text-end">${{ "%.2f"|format(balance.total_paid_out|float) }}</td>
+            <td class="text-end text-warning">${{ "%.2f"|format(balance.pending_balance|float) }}</td>
+            <td class="text-end text-success"><strong>${{ "%.2f"|format(balance.available_balance|float) }}</strong></td>
+            <td class="text-end">
+              {% if balance.available_balance and balance.available_balance > 0 %}
+              <a href="{{ url_for('merchant_auth.payouts') }}" class="btn btn-sm btn-outline-success">Withdraw</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center">No balances yet. Start accepting payments to see your balances here.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

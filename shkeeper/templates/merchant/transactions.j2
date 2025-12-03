@@ -1,0 +1,98 @@
+{% extends 'merchant/base.j2' %}
+
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Invoice History</h5>
+  </div>
+  <div class="card-body">
+    {% if invoices.items %}
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>External ID</th>
+            <th>Crypto</th>
+            <th>Amount</th>
+            <th>Commission</th>
+            <th>Net Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices.items %}
+          <tr>
+            <td>{{ invoice.id }}</td>
+            <td><code>{{ invoice.external_id }}</code></td>
+            <td>{{ invoice.crypto }}</td>
+            <td>${{ "%.2f"|format(invoice.amount_fiat|float) }}</td>
+            <td class="text-danger">
+              {% if invoice.commission_amount %}
+              ${{ "%.2f"|format(invoice.commission_amount|float) }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td class="text-success">
+              {% if invoice.net_amount %}
+              ${{ "%.2f"|format(invoice.net_amount|float) }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td>
+              {% if invoice.status.name == 'PAID' or invoice.status.name == 'OVERPAID' %}
+                <span class="badge bg-success">{{ invoice.status.name }}</span>
+              {% elif invoice.status.name == 'PARTIAL' %}
+                <span class="badge bg-warning">{{ invoice.status.name }}</span>
+              {% elif invoice.status.name == 'UNPAID' %}
+                <span class="badge bg-secondary">{{ invoice.status.name }}</span>
+              {% else %}
+                <span class="badge bg-info">{{ invoice.status.name }}</span>
+              {% endif %}
+            </td>
+            <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') if invoice.created_at else 'N/A' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if invoices.pages > 1 %}
+    <nav aria-label="Page navigation">
+      <ul class="pagination justify-content-center">
+        {% if invoices.has_prev %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=invoices.prev_num) }}">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for page_num in invoices.iter_pages() %}
+          {% if page_num %}
+            <li class="page-item {% if page_num == invoices.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=page_num) }}">{{ page_num }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+          {% endif %}
+        {% endfor %}
+
+        {% if invoices.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=invoices.next_num) }}">Next</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <p class="text-muted text-center">No invoices yet. Use the API to create your first invoice.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

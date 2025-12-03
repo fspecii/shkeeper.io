@@ -1,14 +1,116 @@
 import click
+from decimal import Decimal
 from shkeeper import requests
 
 from flask import Blueprint, json
 from flask import current_app as app
 
 from shkeeper.modules.classes.crypto import Crypto
-from shkeeper.models import *
+from shkeeper.models import (
+    db, Invoice, InvoiceAddress, Transaction, UnconfirmedTransaction,
+    InvoiceStatus, FeeCalculationPolicy, Merchant, MerchantBalance,
+    PlatformSettings, CommissionRecord
+)
+from shkeeper.utils import format_decimal, remove_exponent
 
 
 bp = Blueprint("callback", __name__)
+
+
+# ============================================================================
+# Commission Calculation (Multi-Tenant Platform)
+# ============================================================================
+
+def calculate_commission(merchant, amount_fiat):
+    """
+    Calculate commission for a payment.
+
+    Args:
+        merchant: The Merchant object (or None for legacy invoices)
+        amount_fiat: The gross payment amount in fiat
+
+    Returns:
+        tuple: (commission_amount, net_amount, commission_percent, commission_fixed)
+    """
+    if not merchant:
+        # Legacy invoice without merchant - no commission
+        return Decimal(0), amount_fiat, Decimal(0), Decimal(0)
+
+    # Get platform settings
+    platform = PlatformSettings.get()
+
+    # Use merchant override if set, otherwise use platform default
+    commission_percent = (
+        merchant.commission_percent
+        if merchant.commission_percent is not None
+        else platform.default_commission_percent
+    )
+    commission_fixed = merchant.commission_fixed or platform.default_commission_fixed or Decimal(0)
+
+    # Calculate commission: percentage + fixed fee
+    commission_amount = (amount_fiat * commission_percent / 100) + commission_fixed
+    net_amount = amount_fiat - commission_amount
+
+    # Ensure net_amount is not negative
+    if net_amount < 0:
+        net_amount = Decimal(0)
+        commission_amount = amount_fiat
+
+    return commission_amount, net_amount, commission_percent, commission_fixed
+
+
+def record_commission(invoice, tx, commission_amount, commission_percent, commission_fixed):
+    """
+    Record commission and update merchant balance.
+
+    Args:
+        invoice: The Invoice object
+        tx: The Transaction object
+        commission_amount: Commission amount in fiat
+        commission_percent: Commission percentage applied
+        commission_fixed: Fixed commission fee applied
+    """
+    if not invoice.merchant_id:
+        return
+
+    merchant = Merchant.query.get(invoice.merchant_id)
+    if not merchant:
+        return
+
+    net_amount = invoice.balance_fiat - commission_amount
+
+    # Update invoice with commission info
+    invoice.commission_amount = commission_amount
+    invoice.net_amount = net_amount
+
+    # Create commission record
+    commission_record = CommissionRecord(
+        merchant_id=merchant.id,
+        invoice_id=invoice.id,
+        transaction_id=tx.id,
+        tx_hash=tx.txid,
+        crypto=tx.crypto,
+        gross_amount=invoice.balance_fiat,
+        commission_amount=commission_amount,
+        net_amount=net_amount,
+        commission_percent=commission_percent,
+        commission_fixed=commission_fixed,
+        status="recorded"
+    )
+    db.session.add(commission_record)
+
+    # Update merchant balance
+    balance = MerchantBalance.get_or_create(merchant.id, tx.crypto)
+    balance.total_received = (balance.total_received or Decimal(0)) + invoice.balance_fiat
+    balance.total_commission = (balance.total_commission or Decimal(0)) + commission_amount
+    balance.available_balance = (balance.available_balance or Decimal(0)) + net_amount
+
+    db.session.commit()
+    app.logger.info(
+        f"[{tx.crypto}/{tx.txid}] Commission recorded: "
+        f"gross={invoice.balance_fiat}, commission={commission_amount} ({commission_percent}%), "
+        f"net={net_amount}, merchant={merchant.id}"
+    )
 
 
 def send_unconfirmed_notification(utx: UnconfirmedTransaction):
@@ -66,8 +168,24 @@ def send_unconfirmed_notification(utx: UnconfirmedTransaction):
 def send_notification(tx):
     app.logger.info(f"[{tx.crypto}/{tx.txid}] Notificator started")
 
+    invoice = tx.invoice
+
+    # Calculate commission if this is a merchant invoice and payment is complete
+    commission_amount = Decimal(0)
+    net_amount = invoice.balance_fiat
+    commission_percent = Decimal(0)
+
+    if invoice.merchant_id and invoice.status in (InvoiceStatus.PAID, InvoiceStatus.OVERPAID):
+        merchant = Merchant.query.get(invoice.merchant_id)
+        commission_amount, net_amount, commission_percent, commission_fixed = calculate_commission(
+            merchant, invoice.balance_fiat
+        )
+        # Record commission (only if not already recorded)
+        if not invoice.commission_amount or invoice.commission_amount == 0:
+            record_commission(invoice, tx, commission_amount, commission_percent, commission_fixed)
+
     transactions = []
-    for t in tx.invoice.transactions:
+    for t in invoice.transactions:
         amount_fiat_without_fee = t.rate.get_orig_amount(t.amount_fiat)
         transactions.append(
             {
@@ -83,26 +201,32 @@ def send_notification(tx):
         )
 
     notification = {
-        "external_id": tx.invoice.external_id,
-        "crypto": tx.invoice.crypto,
-        "addr": tx.invoice.addr,
-        "fiat": tx.invoice.fiat,
-        "balance_fiat": remove_exponent(tx.invoice.balance_fiat),
-        "balance_crypto": remove_exponent(tx.invoice.balance_crypto),
-        "paid": tx.invoice.status in (InvoiceStatus.PAID, InvoiceStatus.OVERPAID),
-        "status": tx.invoice.status.name,
+        "external_id": invoice.external_id,
+        "crypto": invoice.crypto,
+        "addr": invoice.addr,
+        "fiat": invoice.fiat,
+        "balance_fiat": remove_exponent(invoice.balance_fiat),
+        "balance_crypto": remove_exponent(invoice.balance_crypto),
+        "paid": invoice.status in (InvoiceStatus.PAID, InvoiceStatus.OVERPAID),
+        "status": invoice.status.name,
         "transactions": transactions,
-        "fee_percent": remove_exponent(tx.invoice.rate.fee),
-        "fee_fixed": remove_exponent(tx.invoice.rate.fixed_fee),
+        "fee_percent": remove_exponent(invoice.rate.fee),
+        "fee_fixed": remove_exponent(invoice.rate.fixed_fee),
         "fee_policy": (
-            tx.invoice.rate.fee_policy.name
-            if tx.invoice.rate.fee_policy
+            invoice.rate.fee_policy.name
+            if invoice.rate.fee_policy
             else FeeCalculationPolicy.PERCENT_FEE.name
         ),
     }
 
-    overpaid_fiat = tx.invoice.balance_fiat - (
-        tx.invoice.amount_fiat * (tx.invoice.wallet.ulimit / 100)
+    # Add commission info for merchant invoices
+    if invoice.merchant_id:
+        notification["commission_amount"] = remove_exponent(commission_amount)
+        notification["commission_percent"] = remove_exponent(commission_percent)
+        notification["net_amount"] = remove_exponent(net_amount)
+
+    overpaid_fiat = invoice.balance_fiat - (
+        invoice.amount_fiat * (invoice.wallet.ulimit / 100)
     )
     notification["overpaid_fiat"] = (
         str(round(overpaid_fiat.normalize(), 2)) if overpaid_fiat > 0 else "0.00"
@@ -110,11 +234,11 @@ def send_notification(tx):
 
     apikey = Crypto.instances[tx.crypto].wallet.apikey
     app.logger.warning(
-        f"[{tx.crypto}/{tx.txid}] Posting {json.dumps(notification)} to {tx.invoice.callback_url} with api key {apikey}"
+        f"[{tx.crypto}/{tx.txid}] Posting {json.dumps(notification)} to {invoice.callback_url} with api key {apikey}"
     )
     try:
         r = requests.post(
-            tx.invoice.callback_url,
+            invoice.callback_url,
             json=notification,
             headers={"X-Shkeeper-Api-Key": apikey},
             timeout=app.config.get("REQUESTS_NOTIFICATION_TIMEOUT"),
@@ -125,14 +249,14 @@ def send_notification(tx):
 
     if r.status_code != 202:
         app.logger.warning(
-            f"[{tx.crypto}/{tx.txid}] Notification failed by {tx.invoice.callback_url} with HTTP code {r.status_code}"
+            f"[{tx.crypto}/{tx.txid}] Notification failed by {invoice.callback_url} with HTTP code {r.status_code}"
         )
         return False
 
     tx.callback_confirmed = True
     db.session.commit()
     app.logger.info(
-        f"[{tx.crypto}/{tx.txid}] Notification has been accepted by {tx.invoice.callback_url}"
+        f"[{tx.crypto}/{tx.txid}] Notification has been accepted by {invoice.callback_url}"
     )
     return True
 

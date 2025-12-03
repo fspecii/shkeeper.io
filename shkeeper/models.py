@@ -2,8 +2,10 @@ import base64
 import codecs
 from collections import namedtuple
 import enum
+import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
+import json
 
 import bcrypt
 from flask import current_app as app
@@ -13,6 +15,280 @@ from shkeeper.modules.rates import RateSource
 from shkeeper.modules.classes.crypto import Crypto
 from .utils import format_decimal, remove_exponent
 from .exceptions import NotRelatedToAnyInvoice
+
+
+# ============================================================================
+# Multi-Tenant Models (TorPay Platform)
+# ============================================================================
+
+class MerchantStatus(enum.Enum):
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    PENDING = "pending"
+
+
+class Merchant(db.Model):
+    """
+    Merchant accounts for the multi-tenant payment platform.
+    Each merchant gets their own API key to integrate payments.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Basic Info
+    name = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+
+    # API Authentication
+    api_key = db.Column(db.String(64), unique=True, nullable=False)
+    webhook_secret = db.Column(db.String(64))  # For signing webhooks to merchant
+
+    # Commission Settings (overrides platform default if set)
+    commission_percent = db.Column(db.Numeric, default=None)  # NULL = use platform default
+    commission_fixed = db.Column(db.Numeric, default=0)
+
+    # Payout Settings - JSON dict: {"BTC": "addr", "ETH": "addr"}
+    payout_addresses = db.Column(db.Text, default="{}")
+    auto_payout = db.Column(db.Boolean, default=False)
+    min_payout_amount = db.Column(db.Numeric, default=100)  # in USD
+
+    # Status & Metadata
+    status = db.Column(db.Enum(MerchantStatus), default=MerchantStatus.ACTIVE)
+    callback_url_base = db.Column(db.String(512))  # Optional default callback
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+
+    # Relationships
+    invoices = db.relationship("Invoice", backref="merchant", lazy=True)
+    balances = db.relationship("MerchantBalance", backref="merchant", lazy=True)
+    commissions = db.relationship("CommissionRecord", backref="merchant", lazy=True)
+
+    @staticmethod
+    def generate_api_key():
+        """Generate a secure random API key."""
+        return secrets.token_hex(32)
+
+    @staticmethod
+    def generate_webhook_secret():
+        """Generate a secure webhook signing secret."""
+        return secrets.token_hex(32)
+
+    @staticmethod
+    def get_password_hash(password):
+        """Hash a password using bcrypt."""
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
+
+    def verify_password(self, password):
+        """Verify a password against the stored hash."""
+        if not self.password_hash:
+            return False
+        return bcrypt.checkpw(password.encode(), self.password_hash)
+
+    def get_payout_address(self, crypto):
+        """Get payout address for a specific crypto."""
+        try:
+            addresses = json.loads(self.payout_addresses or "{}")
+            return addresses.get(crypto)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    def set_payout_address(self, crypto, address):
+        """Set payout address for a specific crypto."""
+        try:
+            addresses = json.loads(self.payout_addresses or "{}")
+        except (json.JSONDecodeError, TypeError):
+            addresses = {}
+        addresses[crypto] = address
+        self.payout_addresses = json.dumps(addresses)
+
+    def to_json(self):
+        """Convert merchant to JSON-safe dict."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "status": self.status.value if self.status else "active",
+            "commission_percent": str(self.commission_percent) if self.commission_percent else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class MerchantBalance(db.Model):
+    """
+    Track per-crypto balances for each merchant.
+    Updated when payments are received and commissions are deducted.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=False)
+    crypto = db.Column(db.String, nullable=False)
+
+    # Balances (in fiat - USD)
+    total_received = db.Column(db.Numeric, default=0)      # Total ever received
+    total_commission = db.Column(db.Numeric, default=0)    # Total commission paid
+    total_paid_out = db.Column(db.Numeric, default=0)      # Total withdrawn
+    available_balance = db.Column(db.Numeric, default=0)   # Can withdraw now
+    pending_balance = db.Column(db.Numeric, default=0)     # Awaiting confirmation
+
+    updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+
+    __table_args__ = (db.UniqueConstraint("merchant_id", "crypto"),)
+
+    @classmethod
+    def get_or_create(cls, merchant_id, crypto):
+        """Get existing balance record or create a new one."""
+        balance = cls.query.filter_by(merchant_id=merchant_id, crypto=crypto).first()
+        if not balance:
+            balance = cls(merchant_id=merchant_id, crypto=crypto)
+            db.session.add(balance)
+            db.session.commit()
+        return balance
+
+    def to_json(self):
+        """Convert balance to JSON-safe dict."""
+        return {
+            "crypto": self.crypto,
+            "total_received": str(self.total_received or 0),
+            "total_commission": str(self.total_commission or 0),
+            "total_paid_out": str(self.total_paid_out or 0),
+            "available_balance": str(self.available_balance or 0),
+            "pending_balance": str(self.pending_balance or 0),
+        }
+
+
+class PlatformSettings(db.Model):
+    """
+    Platform-wide settings for commission and payouts.
+    Only one record should exist (id=1).
+    """
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Commission
+    default_commission_percent = db.Column(db.Numeric, default=2.0)  # 2% default
+    default_commission_fixed = db.Column(db.Numeric, default=0)
+
+    # Platform wallet for collecting commissions - JSON: {"BTC": "addr", ...}
+    commission_wallet = db.Column(db.Text, default="{}")
+
+    # Payout settings
+    min_payout_amount = db.Column(db.Numeric, default=50)  # USD
+    payout_fee_percent = db.Column(db.Numeric, default=0)  # Fee on payouts
+
+    # Auto-approve merchant registrations
+    auto_approve_merchants = db.Column(db.Boolean, default=True)
+
+    updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+
+    @classmethod
+    def get(cls):
+        """Get platform settings, creating defaults if not exists."""
+        settings = cls.query.first()
+        if not settings:
+            settings = cls(id=1)
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+
+    def get_commission_wallet(self, crypto):
+        """Get commission wallet address for a specific crypto."""
+        try:
+            wallets = json.loads(self.commission_wallet or "{}")
+            return wallets.get(crypto)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+
+class CommissionRecord(db.Model):
+    """
+    Track all commission earnings from merchant payments.
+    Created when a payment is confirmed.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=False)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoice.id"), nullable=False)
+    transaction_id = db.Column(db.Integer, db.ForeignKey("transaction.id"))
+    tx_hash = db.Column(db.String)  # The payment transaction hash
+
+    crypto = db.Column(db.String, nullable=False)
+    gross_amount = db.Column(db.Numeric, nullable=False)      # Full payment in fiat
+    commission_amount = db.Column(db.Numeric, nullable=False) # Platform's cut in fiat
+    net_amount = db.Column(db.Numeric, nullable=False)        # Merchant gets in fiat
+    commission_percent = db.Column(db.Numeric)
+    commission_fixed = db.Column(db.Numeric)
+
+    # For tracking if commission was collected to platform wallet
+    status = db.Column(db.String(20), default="recorded")  # recorded, collected
+    collected_tx_hash = db.Column(db.String)
+
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Relationships
+    merchant = db.relationship("Merchant", backref="commission_records")
+
+    def to_json(self):
+        """Convert commission record to JSON-safe dict."""
+        return {
+            "id": self.id,
+            "invoice_id": self.invoice_id,
+            "crypto": self.crypto,
+            "gross_amount": str(self.gross_amount),
+            "commission_amount": str(self.commission_amount),
+            "net_amount": str(self.net_amount),
+            "commission_percent": str(self.commission_percent) if self.commission_percent else None,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class MerchantPayoutStatus(enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REJECTED = "rejected"
+
+
+class MerchantPayout(db.Model):
+    """
+    Track merchant payout requests.
+    Merchants request payouts, admin approves, system processes.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=False)
+
+    crypto = db.Column(db.String, nullable=False)
+    amount_fiat = db.Column(db.Numeric, nullable=False)  # Amount in fiat (USD)
+    amount_crypto = db.Column(db.Numeric)  # Calculated at processing time
+    dest_address = db.Column(db.String(512), nullable=False)
+
+    status = db.Column(db.Enum(MerchantPayoutStatus), default=MerchantPayoutStatus.PENDING)
+    tx_hash = db.Column(db.String)
+    error_message = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    processed_at = db.Column(db.DateTime)
+
+    merchant = db.relationship("Merchant", backref="payouts")
+
+    def to_json(self):
+        """Convert payout to JSON-safe dict."""
+        return {
+            "id": self.id,
+            "crypto": self.crypto,
+            "amount_fiat": str(self.amount_fiat),
+            "amount_crypto": str(self.amount_crypto) if self.amount_crypto else None,
+            "dest_address": self.dest_address,
+            "status": self.status.value if self.status else "pending",
+            "tx_hash": self.tx_hash,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ============================================================================
+# Original SHKeeper Models (Modified for multi-tenant support)
+# ============================================================================
 
 
 class User(db.Model):
@@ -236,8 +512,15 @@ class Invoice(db.Model):
         onupdate=db.func.current_timestamp(),
     )
 
+    # Multi-tenant: Link to merchant
+    merchant_id = db.Column(db.Integer, db.ForeignKey("merchant.id"), nullable=True)
+
+    # Commission tracking (calculated when payment is confirmed)
+    commission_amount = db.Column(db.Numeric, default=0)  # Platform commission in fiat
+    net_amount = db.Column(db.Numeric, default=0)  # Amount after commission in fiat
+
     def to_json(self):
-        return {
+        result = {
             "txs": [
                 tx.to_json()
                 for tx in (*self.transactions, *self.unconfirmed_transactions)
@@ -248,6 +531,12 @@ class Invoice(db.Model):
             "amount_fiat": remove_exponent(self.amount_fiat),
             "status": self.status.name,
         }
+        # Include commission info if available (multi-tenant)
+        if self.commission_amount:
+            result["commission_amount"] = remove_exponent(self.commission_amount)
+        if self.net_amount:
+            result["net_amount"] = remove_exponent(self.net_amount)
+        return result
 
     @property
     def wallet(self) -> Wallet:
@@ -293,12 +582,17 @@ class Invoice(db.Model):
         return self
 
     @classmethod
-    def add(cls, crypto, request):
+    def add(cls, crypto, request, merchant_id=None):
         # {"external_id": "1234",  "fiat": "USD", "amount": 100.90, "callback_url": "https://blabla/callback.php"}
         crypto_is_lightning = "BTC-LIGHTNING" == crypto.crypto
-        invoice = cls.query.filter_by(
+
+        # For multi-tenant: filter by merchant_id if provided
+        query = cls.query.filter_by(
             external_id=request["external_id"], callback_url=request["callback_url"]
-        ).first()
+        )
+        if merchant_id:
+            query = query.filter_by(merchant_id=merchant_id)
+        invoice = query.first()
         if invoice:
             # updating existing invoice
             invoice.fiat = request["fiat"]
@@ -345,6 +639,7 @@ class Invoice(db.Model):
             invoice.callback_url = request["callback_url"]
             invoice.fiat = request["fiat"]
             invoice.amount_fiat = Decimal(request["amount"])
+            invoice.merchant_id = merchant_id  # Multi-tenant support
             rate = ExchangeRate.get(invoice.fiat, invoice.crypto)
             invoice.amount_crypto, invoice.exchange_rate = rate.convert(
                 invoice.amount_fiat

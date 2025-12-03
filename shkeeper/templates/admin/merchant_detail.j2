@@ -1,0 +1,308 @@
+{% extends 'wallet/page.j2' %}
+
+{% block page %}
+<div class="container-fluid">
+  <h2 class="mb-4">Merchant Details</h2>
+
+  <div class="mb-4">
+    <a href="{{ url_for('wallet.admin_merchants') }}" class="btn btn-outline-secondary">Back to Merchants</a>
+  </div>
+
+  <!-- Merchant Info Card -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Merchant Information</h5>
+          {% if merchant.status.value == 'active' %}
+            <span class="badge bg-success">Active</span>
+          {% elif merchant.status.value == 'pending' %}
+            <span class="badge bg-warning">Pending</span>
+          {% else %}
+            <span class="badge bg-danger">Suspended</span>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <table class="table table-borderless mb-0">
+            <tr>
+              <th style="width: 40%;">ID</th>
+              <td>{{ merchant.id }}</td>
+            </tr>
+            <tr>
+              <th>Name</th>
+              <td>{{ merchant.name }}</td>
+            </tr>
+            <tr>
+              <th>Email</th>
+              <td>{{ merchant.email }}</td>
+            </tr>
+            <tr>
+              <th>API Key</th>
+              <td><code>{{ merchant.api_key[:16] }}...</code></td>
+            </tr>
+            <tr>
+              <th>Registered</th>
+              <td>{{ merchant.created_at.strftime('%Y-%m-%d %H:%M') if merchant.created_at else 'N/A' }}</td>
+            </tr>
+            <tr>
+              <th>Callback URL</th>
+              <td>{{ merchant.callback_url_base or 'Not set' }}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="card-footer">
+          {% if merchant.status.value == 'active' %}
+            <form method="post" action="{{ url_for('wallet.admin_suspend_merchant', merchant_id=merchant.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-warning" onclick="return confirm('Suspend this merchant?');">Suspend Merchant</button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('wallet.admin_activate_merchant', merchant_id=merchant.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-success">Activate Merchant</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0">Commission Settings</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('wallet.admin_update_merchant_commission', merchant_id=merchant.id) }}">
+            <div class="mb-3">
+              <label class="form-label">Commission Percentage</label>
+              <div class="input-group">
+                <input type="number" name="commission_percent" class="form-control"
+                       value="{{ merchant.commission_percent if merchant.commission_percent is not none else '' }}"
+                       placeholder="Use platform default" min="0" max="50" step="0.01">
+                <span class="input-group-text">%</span>
+              </div>
+              <small class="text-muted">Leave empty to use platform default ({{ platform_settings.default_commission_percent }}%)</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fixed Commission Fee</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="commission_fixed" class="form-control"
+                       value="{{ merchant.commission_fixed or '' }}"
+                       placeholder="0" min="0" step="0.01">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Commission</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Total Invoices</h5>
+          <h2>{{ stats.total_invoices }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Paid Invoices</h5>
+          <h2 class="text-success">{{ stats.paid_invoices }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Total Volume</h5>
+          <h2 class="text-primary">${{ "%.2f"|format(stats.total_volume|float) }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">Commission Earned</h5>
+          <h2 class="text-info">${{ "%.2f"|format(stats.commission_earned|float) }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balances -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Current Balances</h5>
+    </div>
+    <div class="card-body">
+      {% if balances %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Currency</th>
+              <th>Total Balance</th>
+              <th>Available Balance</th>
+              <th>Pending Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for balance in balances %}
+            <tr>
+              <td>{{ balance.crypto }}</td>
+              <td>${{ "%.2f"|format(balance.total_balance|float) }}</td>
+              <td class="text-success">${{ "%.2f"|format(balance.available_balance|float) }}</td>
+              <td class="text-warning">${{ "%.2f"|format(balance.pending_balance|float) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center">No balances yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Payout Addresses -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Payout Addresses</h5>
+    </div>
+    <div class="card-body">
+      <table class="table table-borderless mb-0">
+        <tr>
+          <th style="width: 20%;">BTC</th>
+          <td><code>{{ merchant.get_payout_address('BTC') or 'Not configured' }}</code></td>
+        </tr>
+        <tr>
+          <th>ETH</th>
+          <td><code>{{ merchant.get_payout_address('ETH') or 'Not configured' }}</code></td>
+        </tr>
+        <tr>
+          <th>USDT-TRC20</th>
+          <td><code>{{ merchant.get_payout_address('USDT-TRC20') or 'Not configured' }}</code></td>
+        </tr>
+        <tr>
+          <th>XMR</th>
+          <td><code>{{ merchant.get_payout_address('XMR') or 'Not configured' }}</code></td>
+        </tr>
+        <tr>
+          <th>LTC</th>
+          <td><code>{{ merchant.get_payout_address('LTC') or 'Not configured' }}</code></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Invoices -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Recent Invoices</h5>
+    </div>
+    <div class="card-body">
+      {% if recent_invoices %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>External ID</th>
+              <th>Amount</th>
+              <th>Crypto</th>
+              <th>Status</th>
+              <th>Commission</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in recent_invoices %}
+            <tr>
+              <td>{{ invoice.id }}</td>
+              <td>{{ invoice.external_id or '-' }}</td>
+              <td>${{ "%.2f"|format(invoice.fiat|float) if invoice.fiat else 'N/A' }}</td>
+              <td>{{ invoice.crypto }}</td>
+              <td>
+                {% if invoice.status.value == 'paid' or invoice.status.value == 'paid-expired' %}
+                  <span class="badge bg-success">{{ invoice.status.value }}</span>
+                {% elif invoice.status.value == 'pending' %}
+                  <span class="badge bg-warning">Pending</span>
+                {% elif invoice.status.value == 'expired' %}
+                  <span class="badge bg-secondary">Expired</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ invoice.status.value }}</span>
+                {% endif %}
+              </td>
+              <td>${{ "%.2f"|format(invoice.commission_amount|float) if invoice.commission_amount else '0.00' }}</td>
+              <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') if invoice.created_at else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center">No invoices yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Payouts -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Recent Payout Requests</h5>
+    </div>
+    <div class="card-body">
+      {% if recent_payouts %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Currency</th>
+              <th>Amount</th>
+              <th>Destination</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payout in recent_payouts %}
+            <tr>
+              <td>{{ payout.id }}</td>
+              <td>{{ payout.crypto }}</td>
+              <td>${{ "%.2f"|format(payout.amount_fiat|float) }}</td>
+              <td><code title="{{ payout.dest_address }}">{{ payout.dest_address[:20] }}...</code></td>
+              <td>
+                {% if payout.status.value == 'completed' %}
+                  <span class="badge bg-success">Completed</span>
+                {% elif payout.status.value == 'pending' %}
+                  <span class="badge bg-warning">Pending</span>
+                {% elif payout.status.value == 'approved' %}
+                  <span class="badge bg-info">Approved</span>
+                {% elif payout.status.value == 'processing' %}
+                  <span class="badge bg-primary">Processing</span>
+                {% elif payout.status.value == 'failed' %}
+                  <span class="badge bg-danger">Failed</span>
+                {% elif payout.status.value == 'rejected' %}
+                  <span class="badge bg-danger">Rejected</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ payout.status.value }}</span>
+                {% endif %}
+              </td>
+              <td>{{ payout.created_at.strftime('%Y-%m-%d %H:%M') if payout.created_at else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center">No payout requests yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

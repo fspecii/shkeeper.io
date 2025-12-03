@@ -261,13 +261,13 @@ def balances():
     # Get commission totals
     total_commission = (
         db.session.query(db.func.sum(CommissionRecord.commission_amount))
-        .filter_by(merchant_id=merchant.id)
+        .filter(CommissionRecord.merchant_id == merchant.id)
         .scalar() or Decimal(0)
     )
 
     total_received = (
         db.session.query(db.func.sum(CommissionRecord.gross_amount))
-        .filter_by(merchant_id=merchant.id)
+        .filter(CommissionRecord.merchant_id == merchant.id)
         .scalar() or Decimal(0)
     )
 

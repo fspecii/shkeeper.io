@@ -52,6 +52,18 @@ def page_not_found_error(e):
     return render_template("404.j2", theme=request.cookies.get("theme", "light")), 404
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    """Parse environment variable as boolean.
+
+    Handles string values like 'true', 'false', '1', '0', 'yes', 'no'.
+    Returns default if the variable is not set.
+    """
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in ('true', '1', 'yes', 'on')
+
+
 def create_app(test_config=None):
     """Create and configure an instance of the Flask application."""
     app = Flask(__name__, instance_relative_config=True)
@@ -65,21 +77,19 @@ def create_app(test_config=None):
         SUGGESTED_WALLET_APIKEY=secrets.token_urlsafe(16),
         SESSION_TYPE="filesystem",
         SESSION_FILE_DIR=os.path.join(app.instance_path, "flask_session"),
-        TRON_MULTISERVER_GUI=bool(os.environ.get("TRON_MULTISERVER_GUI")),
-        TRON_STAKING_GUI=bool(os.environ.get("TRON_STAKING_GUI")),
-        FORCE_WALLET_ENCRYPTION=bool(os.environ.get("FORCE_WALLET_ENCRYPTION")),
-        UNCONFIRMED_TX_NOTIFICATION=bool(os.environ.get("UNCONFIRMED_TX_NOTIFICATION")),
+        TRON_MULTISERVER_GUI=env_bool("TRON_MULTISERVER_GUI"),
+        TRON_STAKING_GUI=env_bool("TRON_STAKING_GUI"),
+        FORCE_WALLET_ENCRYPTION=env_bool("FORCE_WALLET_ENCRYPTION"),
+        UNCONFIRMED_TX_NOTIFICATION=env_bool("UNCONFIRMED_TX_NOTIFICATION"),
         REQUESTS_TIMEOUT=int(os.environ.get("REQUESTS_TIMEOUT", 10)),
         REQUESTS_NOTIFICATION_TIMEOUT=int(
             os.environ.get("REQUESTS_NOTIFICATION_TIMEOUT", 30)
         ),
-        DEV_MODE=bool(os.environ.get("DEV_MODE", False)),
+        DEV_MODE=env_bool("DEV_MODE"),
         DEV_MODE_ENC_PW=os.environ.get("DEV_MODE_ENC_PW"),
         NOTIFICATION_TASK_DELAY=int(os.environ.get("NOTIFICATION_TASK_DELAY", 60)),
         TEMPLATES_AUTO_RELOAD=True,
-        DISABLE_CRYPTO_WHEN_LAGS=bool(
-            os.environ.get("DISABLE_CRYPTO_WHEN_LAGS", False)
-        ),
+        DISABLE_CRYPTO_WHEN_LAGS=env_bool("DISABLE_CRYPTO_WHEN_LAGS"),
     )
 
     if test_config is None:
@@ -192,9 +202,20 @@ def create_app(test_config=None):
         from .wallet_encryption import WalletEncryptionPersistentStatus
 
         if setting := Setting.query.get("WalletEncryptionPersistentStatus"):
-            app.logger.info(
-                f"WalletEncryptionPersistentStatus: {WalletEncryptionPersistentStatus(int(setting.value))}"
-            )
+            current_status = WalletEncryptionPersistentStatus(int(setting.value))
+            app.logger.info(f"WalletEncryptionPersistentStatus: {current_status}")
+
+            # Auto-disable wallet encryption if FORCE_WALLET_ENCRYPTION is explicitly false
+            # and the status is pending (fixes existing installations with buggy bool parsing)
+            if (
+                current_status is WalletEncryptionPersistentStatus.pending
+                and os.environ.get("FORCE_WALLET_ENCRYPTION", "").lower() in ("false", "0", "no", "off")
+            ):
+                setting.value = WalletEncryptionPersistentStatus.disabled.value
+                db.session.commit()
+                app.logger.info(
+                    "WalletEncryptionPersistentStatus auto-disabled due to FORCE_WALLET_ENCRYPTION=false"
+                )
         else:  # this is a fresh instance or upgrade
             admin = User.query.get(1)
             if not admin.passhash or app.config.get("FORCE_WALLET_ENCRYPTION"):

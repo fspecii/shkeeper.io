@@ -12,7 +12,7 @@
   <div class="torpay-card-body">
     {% if balances %}
     <form method="post" action="{{ url_for('merchant_auth.request_payout') }}">
-      <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
         <div class="torpay-form-group" style="margin-bottom: 0;">
           <label class="torpay-form-label">Currency</label>
           <select name="crypto" class="torpay-form-input" required>
@@ -26,6 +26,10 @@
         <div class="torpay-form-group" style="margin-bottom: 0;">
           <label class="torpay-form-label">Amount (USD)</label>
           <input type="number" name="amount" class="torpay-form-input" placeholder="0 = withdraw all" min="0" step="0.01">
+        </div>
+        <div class="torpay-form-group" style="margin-bottom: 0;">
+          <label class="torpay-form-label">Security Phrase</label>
+          <input type="password" name="security_phrase" class="torpay-form-input" placeholder="Required to withdraw" required>
         </div>
         <button type="submit" class="torpay-btn torpay-btn-primary" style="height: 46px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -42,7 +46,10 @@
         <line x1="12" y1="16" x2="12" y2="12"/>
         <line x1="12" y1="8" x2="12.01" y2="8"/>
       </svg>
-      <span>Make sure you have configured your payout addresses in <a href="{{ url_for('merchant_auth.settings') }}" style="color: inherit; font-weight: 600;">Settings</a> before requesting a payout. Enter 0 to withdraw the entire balance.</span>
+      <span>
+        Configure payout addresses in <a href="{{ url_for('merchant_auth.settings') }}" style="color: inherit; font-weight: 600;">Settings</a> before requesting a payout.
+        Enter 0 to withdraw the entire balance. Security phrase is required for every withdrawal.
+      </span>
     </div>
     {% else %}
     <div class="torpay-empty">

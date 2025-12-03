@@ -4,6 +4,39 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
+<!-- Credentials -->
+<div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.05s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Credentials</h2>
+  </div>
+  <div class="torpay-card-body">
+    <div class="torpay-form-group">
+      <label class="torpay-form-label">Login ID</label>
+      <div class="torpay-code" style="font-size: 1rem;">{{ merchant.login_id }}</div>
+      <p style="color: var(--torpay-gray-500); font-size: 0.85rem; margin-top: 0.5rem;">Use this with your Login Secret to access the merchant dashboard.</p>
+    </div>
+
+    <form method="post" action="{{ url_for('merchant_auth.rotate_secret') }}" class="torpay-grid torpay-grid-2" style="align-items: end;">
+      <div class="torpay-form-group" style="margin: 0;">
+        <label class="torpay-form-label">Security Phrase</label>
+        <input
+          type="password"
+          name="security_phrase"
+          class="torpay-form-input"
+          placeholder="Required to rotate secret"
+          required
+        >
+        <p style="color: var(--torpay-gray-500); font-size: 0.85rem; margin-top: 0.5rem;">We never show your current secret. Rotate it after confirming your security phrase.</p>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin: 0;">
+        <button type="submit" class="torpay-btn torpay-btn-secondary" style="height: 46px;">
+          Rotate Login Secret
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <form method="post">
   <!-- Callback Settings -->
   <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.1s;">

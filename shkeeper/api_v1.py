@@ -843,7 +843,8 @@ def request_merchant_payout():
     JSON body:
     {
         "crypto": "BTC",          # Required: cryptocurrency to withdraw
-        "amount": 100.00          # Optional: amount in USD (0 or omit for full balance)
+        "amount": 100.00,         # Optional: amount in USD (0 or omit for full balance)
+        "security_phrase": "..."  # Required: phrase set at registration
     }
     """
     if not hasattr(g, 'merchant') or not g.merchant:
@@ -855,6 +856,21 @@ def request_merchant_payout():
         return {"status": "error", "message": "Merchant account is not active"}, 403
 
     req = request.get_json(force=True)
+    security_phrase = req.get("security_phrase", "")
+    if not security_phrase:
+        return {
+            "status": "error",
+            "message": "Security phrase is required to request a payout."
+        }, 400
+    if merchant.security_phrase_hash:
+        if not merchant.verify_security_phrase(str(security_phrase)):
+            return {
+                "status": "error",
+                "message": "Invalid security phrase."
+            }, 403
+    else:
+        merchant.security_phrase_hash = Merchant.hash_secret(str(security_phrase))
+        db.session.commit()
 
     crypto = req.get("crypto")
     if not crypto:

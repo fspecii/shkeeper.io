@@ -36,7 +36,11 @@ class Merchant(db.Model):
 
     # Basic Info
     name = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    login_id = db.Column(db.String(64), unique=True, nullable=False)
+    login_secret_hash = db.Column(db.String(128))
+    security_phrase_hash = db.Column(db.String(128))
+    # Deprecated, kept for backwards compatibility during rollout
+    email = db.Column(db.String(255), unique=True, nullable=True)
     password_hash = db.Column(db.String(128))
 
     # API Authentication
@@ -76,15 +80,40 @@ class Merchant(db.Model):
         return secrets.token_hex(32)
 
     @staticmethod
+    def generate_login_id():
+        """Generate a pseudonymous login identifier."""
+        # 32-char URL-safe token (no padding)
+        return secrets.token_urlsafe(24)
+
+    @staticmethod
+    def generate_login_secret():
+        """Generate a high-entropy secret (64 hex chars)."""
+        return secrets.token_hex(32)
+
+    @staticmethod
+    def hash_secret(secret):
+        """Hash a secret using bcrypt."""
+        return bcrypt.hashpw(secret.encode(), bcrypt.gensalt(rounds=12))
+
+    def verify_login_secret(self, secret):
+        """Verify a login secret against the stored hash."""
+        if not self.login_secret_hash:
+            return False
+        return bcrypt.checkpw(secret.encode(), self.login_secret_hash)
+
+    def verify_security_phrase(self, phrase):
+        """Verify the security phrase (used for sensitive actions)."""
+        if not self.security_phrase_hash:
+            return False
+        return bcrypt.checkpw(phrase.encode(), self.security_phrase_hash)
+
+    # Backwards compatibility with legacy password-named helpers
+    @staticmethod
     def get_password_hash(password):
-        """Hash a password using bcrypt."""
-        return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
+        return Merchant.hash_secret(password)
 
     def verify_password(self, password):
-        """Verify a password against the stored hash."""
-        if not self.password_hash:
-            return False
-        return bcrypt.checkpw(password.encode(), self.password_hash)
+        return self.verify_login_secret(password)
 
     def get_payout_address(self, crypto):
         """Get payout address for a specific crypto."""
@@ -108,7 +137,7 @@ class Merchant(db.Model):
         return {
             "id": self.id,
             "name": self.name,
-            "email": self.email,
+            "login_id": self.login_id,
             "status": self.status.value if self.status else "active",
             "commission_percent": str(self.commission_percent) if self.commission_percent else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

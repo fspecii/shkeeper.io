@@ -52,7 +52,7 @@
             <tr>
               <th>ID</th>
               <th>Name</th>
-              <th>Email</th>
+              <th>Login ID</th>
               <th>Status</th>
               <th>Commission Rate</th>
               <th>Created</th>
@@ -64,7 +64,7 @@
             <tr>
               <td>{{ merchant.id }}</td>
               <td><a href="{{ url_for('wallet.admin_merchant_detail', merchant_id=merchant.id) }}">{{ merchant.name }}</a></td>
-              <td>{{ merchant.email }}</td>
+              <td><code>{{ merchant.login_id or 'n/a' }}</code></td>
               <td>
                 {% if merchant.status.value == 'active' %}
                   <span class="badge bg-success">Active</span>

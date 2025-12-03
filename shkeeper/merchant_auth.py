@@ -45,25 +45,17 @@ def inject_theme():
 def register():
     """Public merchant registration - no login required."""
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        confirm_password = request.form.get("confirm_password", "")
-        business_name = request.form.get("business_name", "").strip()
+        security_phrase = request.form.get("security_phrase", "").strip()
+        security_phrase_confirm = request.form.get("security_phrase_confirm", "").strip()
 
         error = None
 
-        if not email:
-            error = "Email is required."
-        elif not password:
-            error = "Password is required."
-        elif password != confirm_password:
-            error = "Passwords do not match."
-        elif not business_name:
-            error = "Business name is required."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters."
-        elif Merchant.query.filter_by(email=email).first():
-            error = "Email is already registered."
+        if not security_phrase:
+            error = "Security phrase is required."
+        elif len(security_phrase) < 8:
+            error = "Security phrase must be at least 8 characters."
+        elif security_phrase != security_phrase_confirm:
+            error = "Security phrase confirmation does not match."
 
         if error is None:
             # Get platform settings for auto-approve
@@ -74,11 +66,20 @@ def register():
                 else MerchantStatus.PENDING
             )
 
+            login_id = Merchant.generate_login_id()
+            while Merchant.query.filter_by(login_id=login_id).first():
+                login_id = Merchant.generate_login_id()
+            login_secret = Merchant.generate_login_secret()
+            merchant_name = f"merchant-{login_id[:8]}"
+
             # Create merchant account
             merchant = Merchant(
-                name=business_name,
-                email=email,
-                password_hash=Merchant.get_password_hash(password),
+                name=merchant_name,
+                login_id=login_id,
+                login_secret_hash=Merchant.hash_secret(login_secret),
+                security_phrase_hash=Merchant.hash_secret(security_phrase),
+                # keep email column non-identifying to satisfy legacy schema
+                email=f"{login_id}@torpay.local",
                 api_key=Merchant.generate_api_key(),
                 webhook_secret=Merchant.generate_webhook_secret(),
                 status=initial_status,
@@ -88,13 +89,20 @@ def register():
 
             # Auto-login after registration
             session["merchant_id"] = merchant.id
+            session["merchant_credentials"] = {
+                "login_id": login_id,
+                "login_secret": login_secret,
+                "api_key": merchant.api_key,
+                "webhook_secret": merchant.webhook_secret,
+                "message": "Save these credentials now. They will not be shown again.",
+            }
 
             if initial_status == MerchantStatus.PENDING:
                 flash("Account created! Your account is pending approval.")
             else:
-                flash(f"Account created! Your API Key: {merchant.api_key}")
+                flash("Account created! Credentials generated.")
 
-            return redirect(url_for("merchant_auth.dashboard"))
+            return redirect(url_for("merchant_auth.credentials"))
 
         flash(error)
 
@@ -105,16 +113,16 @@ def register():
 def login():
     """Merchant login."""
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
+        login_id = request.form.get("login_id", "").strip()
+        login_secret = request.form.get("login_secret", "")
 
         error = None
-        merchant = Merchant.query.filter_by(email=email).first()
+        merchant = Merchant.query.filter_by(login_id=login_id).first()
 
         if merchant is None:
-            error = "Invalid email or password."
-        elif not merchant.verify_password(password):
-            error = "Invalid email or password."
+            error = "Invalid login ID or secret."
+        elif not merchant.verify_login_secret(login_secret):
+            error = "Invalid login ID or secret."
         elif merchant.status == MerchantStatus.SUSPENDED:
             error = "Your account has been suspended. Please contact support."
         elif merchant.status == MerchantStatus.PENDING:
@@ -129,10 +137,21 @@ def login():
     return render_template("merchant/login.j2")
 
 
+@bp.route("/credentials")
+@merchant_login_required
+def credentials():
+    """One-time credential reveal screen after registration/rotation."""
+    creds = session.pop("merchant_credentials", None)
+    if not creds:
+        return redirect(url_for("merchant_auth.dashboard"))
+    return render_template("merchant/credentials.j2", credentials=creds)
+
+
 @bp.route("/logout")
 def logout():
     """Log out merchant."""
     session.pop("merchant_id", None)
+    session.pop("merchant_credentials", None)
     flash("You have been logged out.")
     return redirect(url_for("merchant_auth.login"))
 
@@ -320,6 +339,43 @@ def settings():
     return render_template("merchant/settings.j2", merchant=merchant)
 
 
+@bp.route("/rotate-secret", methods=["POST"])
+@merchant_login_required
+def rotate_secret():
+    """Rotate the login secret after validating the security phrase."""
+    merchant = g.current_merchant
+    phrase = request.form.get("security_phrase", "").strip()
+
+    if not phrase:
+        flash("Security phrase is required to rotate your login secret.")
+        return redirect(url_for("merchant_auth.settings"))
+
+    if merchant.security_phrase_hash:
+        if not merchant.verify_security_phrase(phrase):
+            flash("Invalid security phrase.")
+            return redirect(url_for("merchant_auth.settings"))
+    else:
+        merchant.security_phrase_hash = Merchant.hash_secret(phrase)
+
+    if not merchant.security_phrase_hash:
+        flash("Invalid security phrase.")
+        return redirect(url_for("merchant_auth.settings"))
+
+    new_secret = Merchant.generate_login_secret()
+    merchant.login_secret_hash = Merchant.hash_secret(new_secret)
+    db.session.commit()
+
+    session["merchant_credentials"] = {
+        "login_id": merchant.login_id,
+        "login_secret": new_secret,
+        "api_key": merchant.api_key,
+        "webhook_secret": merchant.webhook_secret,
+        "message": "Login secret rotated. Store the new secret safely.",
+    }
+    flash("Login secret rotated.")
+    return redirect(url_for("merchant_auth.credentials"))
+
+
 @bp.route("/payouts")
 @merchant_login_required
 def payouts():
@@ -354,6 +410,19 @@ def request_payout():
 
     crypto = request.form.get("crypto")
     amount_str = request.form.get("amount", "0")
+    security_phrase = request.form.get("security_phrase", "").strip()
+
+    if not security_phrase:
+        flash("Security phrase is required to request a payout.")
+        return redirect(url_for("merchant_auth.payouts"))
+
+    if merchant.security_phrase_hash:
+        if not merchant.verify_security_phrase(security_phrase):
+            flash("Invalid security phrase.")
+            return redirect(url_for("merchant_auth.payouts"))
+    else:
+        merchant.security_phrase_hash = Merchant.hash_secret(security_phrase)
+        db.session.commit()
 
     try:
         amount = Decimal(amount_str)

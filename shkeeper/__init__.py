@@ -176,6 +176,22 @@ def create_app(test_config=None):
         from .db_upgrade import run_migrations
         run_migrations(db, app)
 
+        # Backfill login credentials for legacy merchants (email/password logins)
+        legacy_credentials_updated = False
+        for merchant in Merchant.query.all():
+            if not merchant.login_id:
+                new_login_id = Merchant.generate_login_id()
+                while Merchant.query.filter_by(login_id=new_login_id).first():
+                    new_login_id = Merchant.generate_login_id()
+                merchant.login_id = new_login_id
+                legacy_credentials_updated = True
+            if not merchant.login_secret_hash and merchant.password_hash:
+                merchant.login_secret_hash = merchant.password_hash
+                legacy_credentials_updated = True
+        if legacy_credentials_updated:
+            db.session.commit()
+            app.logger.info("Backfilled login_id/login_secret for legacy merchants.")
+
         # Create default user
         default_user = "admin"
         if not User.query.filter_by(username=default_user).first():

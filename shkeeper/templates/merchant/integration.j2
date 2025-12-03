@@ -262,7 +262,6 @@ function updatePreview(options) {
     cryptos: availableCryptos,
     buttonText: options.buttonText,
     orderId: 'preview-' + Date.now(),
-    demo: true,  // Use demo mode to show UI without real API calls
     onSuccess: function(data) { console.log('Preview created:', data); }
   });
 }

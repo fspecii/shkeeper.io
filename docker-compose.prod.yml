@@ -11,7 +11,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: shkeeper
     hostname: shkeeper
     ports:
       - "5000:5000"
@@ -73,7 +72,7 @@ services:
       - tron-shkeeper
       - mariadb
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
   # =============================================================================
@@ -81,7 +80,6 @@ services:
   # =============================================================================
   bitcoin-shkeeper:
     image: vsyshost/bitcoin-shkeeper:1.0.5
-    container_name: bitcoin-shkeeper
     hostname: bitcoin-shkeeper
     environment:
       - BITCOIN_RPC_HOST=fullnode.bitcoin.shkeeper.io
@@ -98,7 +96,7 @@ services:
     depends_on:
       - mariadb
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
   # =============================================================================
@@ -106,7 +104,6 @@ services:
   # =============================================================================
   tron-shkeeper:
     image: vsyshost/tron-shkeeper:1.1.10
-    container_name: tron-shkeeper
     hostname: tron-shkeeper
     command: ["gunicorn", "--access-logfile=-", "--workers=1", "--threads=64", "--timeout=600", "--bind=0.0.0.0:6000", "run:server"]
     environment:
@@ -122,13 +119,12 @@ services:
       - mariadb
       - redis
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
   # Tron Celery worker for background tasks
   tron-tasks:
     image: vsyshost/tron-shkeeper:1.1.10
-    container_name: tron-tasks
     command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "-B", "--schedule=/app/data/celerybeat-schedule"]
     environment:
       - BTC_USERNAME=${USDT_USERNAME:-shkeeper}
@@ -145,7 +141,7 @@ services:
       - redis
       - tron-shkeeper
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
   # =============================================================================
@@ -155,34 +151,30 @@ services:
   # MariaDB for Tron/USDT state
   mariadb:
     image: mariadb:10.11
-    container_name: torpay-mariadb
+    hostname: mariadb
     environment:
       - MYSQL_ROOT_PASSWORD=shkeeper
       - MYSQL_DATABASE=shkeeper
     volumes:
       - mariadb_data:/var/lib/mysql
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
   # Redis for Celery task queue
   redis:
     image: redis:7
-    container_name: torpay-redis
+    hostname: redis
     command: ["redis-server", "--loglevel", "warning", "--bind", "0.0.0.0", "--protected-mode", "no", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
     networks:
-      - torpay-network
+      - default
     restart: unless-stopped
 
 # =============================================================================
-# Networks & Volumes
+# Volumes
 # =============================================================================
-networks:
-  torpay-network:
-    driver: bridge
-
 volumes:
   shkeeper_data:
   bitcoin_shkeeper_data:

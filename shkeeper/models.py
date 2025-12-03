@@ -585,9 +585,16 @@ class Invoice(db.Model):
         # {"external_id": "1234",  "fiat": "USD", "amount": 100.90, "callback_url": "https://blabla/callback.php"}
         crypto_is_lightning = "BTC-LIGHTNING" == crypto.crypto
 
+        # callback_url is optional - use merchant default if not provided
+        callback_url = request.get("callback_url", "")
+        if not callback_url and merchant_id:
+            merchant = Merchant.query.get(merchant_id)
+            if merchant and merchant.callback_url_base:
+                callback_url = merchant.callback_url_base
+
         # For multi-tenant: filter by merchant_id if provided
         query = cls.query.filter_by(
-            external_id=request["external_id"], callback_url=request["callback_url"]
+            external_id=request["external_id"], callback_url=callback_url
         )
         if merchant_id:
             query = query.filter_by(merchant_id=merchant_id)
@@ -635,7 +642,7 @@ class Invoice(db.Model):
             invoice = cls()
             invoice.crypto = crypto.crypto
             invoice.external_id = request["external_id"]
-            invoice.callback_url = request["callback_url"]
+            invoice.callback_url = callback_url  # Use resolved callback_url
             invoice.fiat = request["fiat"]
             invoice.amount_fiat = Decimal(request["amount"])
             invoice.merchant_id = merchant_id  # Multi-tenant support

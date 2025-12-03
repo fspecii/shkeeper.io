@@ -1,69 +1,92 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Balances{% endblock %}
+{% block page_title %}Balances{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('merchant_auth.payouts') }}" class="torpay-btn torpay-btn-primary">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+  </svg>
+  Request Payout
+</a>
+{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title text-muted">Total Received (Gross)</h5>
-        <h2 class="text-primary">${{ "%.2f"|format(total_received|float) }}</h2>
-        <small class="text-muted">Total payments received before commission</small>
-      </div>
-    </div>
+<!-- Summary Stats -->
+<div class="torpay-grid torpay-grid-2" style="margin-bottom: 2rem;">
+  <div class="torpay-stat-card torpay-animate" style="animation-delay: 0.1s;">
+    <div class="torpay-stat-label">Total Received (Gross)</div>
+    <div class="torpay-stat-value">${{ "%.2f"|format(total_received|float) }}</div>
+    <div class="torpay-stat-meta">Total payments received before commission</div>
   </div>
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title text-muted">Total Commission Paid</h5>
-        <h2 class="text-danger">${{ "%.2f"|format(total_commission|float) }}</h2>
-        <small class="text-muted">Platform commission deducted from payments</small>
-      </div>
-    </div>
+
+  <div class="torpay-stat-card danger torpay-animate" style="animation-delay: 0.2s;">
+    <div class="torpay-stat-label">Total Commission Paid</div>
+    <div class="torpay-stat-value" style="color: var(--torpay-danger);">${{ "%.2f"|format(total_commission|float) }}</div>
+    <div class="torpay-stat-meta">Platform commission deducted from payments</div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h5 class="mb-0">Balance by Currency</h5>
+<!-- Balance by Currency -->
+<div class="torpay-card torpay-animate" style="animation-delay: 0.3s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Balance by Currency</h2>
   </div>
-  <div class="card-body">
+  <div class="torpay-card-body" style="padding: 0;">
     {% if balances %}
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Currency</th>
-            <th class="text-end">Total Received</th>
-            <th class="text-end">Commission Paid</th>
-            <th class="text-end">Total Withdrawn</th>
-            <th class="text-end">Pending</th>
-            <th class="text-end">Available</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for balance in balances %}
-          <tr>
-            <td><strong>{{ balance.crypto }}</strong></td>
-            <td class="text-end">${{ "%.2f"|format(balance.total_received|float) }}</td>
-            <td class="text-end text-danger">${{ "%.2f"|format(balance.total_commission|float) }}</td>
-            <td class="text-end">${{ "%.2f"|format(balance.total_paid_out|float) }}</td>
-            <td class="text-end text-warning">${{ "%.2f"|format(balance.pending_balance|float) }}</td>
-            <td class="text-end text-success"><strong>${{ "%.2f"|format(balance.available_balance|float) }}</strong></td>
-            <td class="text-end">
-              {% if balance.available_balance and balance.available_balance > 0 %}
-              <a href="{{ url_for('merchant_auth.payouts') }}" class="btn btn-sm btn-outline-success">Withdraw</a>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="torpay-table">
+      <thead>
+        <tr>
+          <th>Currency</th>
+          <th style="text-align: right;">Total Received</th>
+          <th style="text-align: right;">Commission</th>
+          <th style="text-align: right;">Withdrawn</th>
+          <th style="text-align: right;">Pending</th>
+          <th style="text-align: right;">Available</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for balance in balances %}
+        <tr>
+          <td>
+            <strong style="color: var(--torpay-primary);">{{ balance.crypto }}</strong>
+          </td>
+          <td style="text-align: right;">${{ "%.2f"|format(balance.total_received|float) }}</td>
+          <td style="text-align: right; color: var(--torpay-danger);">-${{ "%.2f"|format(balance.total_commission|float) }}</td>
+          <td style="text-align: right;">${{ "%.2f"|format(balance.total_paid_out|float) }}</td>
+          <td style="text-align: right; color: var(--torpay-warning);">
+            {% if balance.pending_balance and balance.pending_balance > 0 %}
+            ${{ "%.2f"|format(balance.pending_balance|float) }}
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <strong style="color: var(--torpay-success);">${{ "%.2f"|format(balance.available_balance|float) }}</strong>
+          </td>
+          <td style="text-align: right;">
+            {% if balance.available_balance and balance.available_balance > 0 %}
+            <a href="{{ url_for('merchant_auth.payouts') }}" class="torpay-btn torpay-btn-outline torpay-btn-sm">
+              Withdraw
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% else %}
-    <p class="text-muted text-center">No balances yet. Start accepting payments to see your balances here.</p>
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
+      </svg>
+      <div class="torpay-empty-title">No balances yet</div>
+      <p>Start accepting payments to see your balances here.</p>
+    </div>
     {% endif %}
   </div>
 </div>

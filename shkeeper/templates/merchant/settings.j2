@@ -1,99 +1,156 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
 
 {% block content %}
 <form method="post">
   <!-- Callback Settings -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Callback Settings</h5>
+  <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.1s;">
+    <div class="torpay-card-header">
+      <h2 class="torpay-card-title">Webhook Settings</h2>
     </div>
-    <div class="card-body">
-      <div class="mb-3">
-        <label class="form-label">Default Callback URL</label>
-        <input type="url" name="callback_url_base" class="form-control"
-               value="{{ merchant.callback_url_base or '' }}"
-               placeholder="https://your-site.com/webhook">
-        <small class="text-muted">Optional: Default callback URL for payment notifications. Can be overridden per invoice.</small>
+    <div class="torpay-card-body">
+      <div class="torpay-form-group">
+        <label class="torpay-form-label">Default Callback URL</label>
+        <input
+          type="url"
+          name="callback_url_base"
+          class="torpay-form-input"
+          value="{{ merchant.callback_url_base or '' }}"
+          placeholder="https://your-site.com/webhook"
+        >
+        <p style="color: var(--torpay-gray-500); font-size: 0.75rem; margin-top: 0.5rem;">
+          Default URL for payment notifications. Can be overridden per invoice.
+        </p>
       </div>
     </div>
   </div>
 
   <!-- Payout Addresses -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Payout Addresses</h5>
+  <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.2s;">
+    <div class="torpay-card-header">
+      <h2 class="torpay-card-title">Payout Addresses</h2>
     </div>
-    <div class="card-body">
-      <p class="text-muted">Configure your wallet addresses for each cryptocurrency to receive payouts.</p>
-
-      {# Payout addresses are parsed server-side via merchant.get_payout_address() #}
-
-      <div class="mb-3">
-        <label class="form-label">Bitcoin (BTC)</label>
-        <input type="text" name="payout_address_BTC" class="form-control font-monospace"
-               value="{{ merchant.get_payout_address('BTC') or '' }}"
-               placeholder="bc1q...">
+    <div class="torpay-card-body">
+      <div class="torpay-alert torpay-alert-info" style="margin-bottom: 1.5rem;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>Configure your wallet addresses for each cryptocurrency to receive payouts.</span>
       </div>
 
-      <div class="mb-3">
-        <label class="form-label">Ethereum (ETH)</label>
-        <input type="text" name="payout_address_ETH" class="form-control font-monospace"
-               value="{{ merchant.get_payout_address('ETH') or '' }}"
-               placeholder="0x...">
-      </div>
+      <div class="torpay-grid torpay-grid-2">
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Bitcoin (BTC)</label>
+          <input
+            type="text"
+            name="payout_address_BTC"
+            class="torpay-form-input"
+            value="{{ merchant.get_payout_address('BTC') or '' }}"
+            placeholder="bc1q..."
+            style="font-family: monospace;"
+          >
+        </div>
 
-      <div class="mb-3">
-        <label class="form-label">Tether (USDT-TRC20)</label>
-        <input type="text" name="payout_address_USDT-TRC20" class="form-control font-monospace"
-               value="{{ merchant.get_payout_address('USDT-TRC20') or '' }}"
-               placeholder="T...">
-      </div>
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Ethereum (ETH)</label>
+          <input
+            type="text"
+            name="payout_address_ETH"
+            class="torpay-form-input"
+            value="{{ merchant.get_payout_address('ETH') or '' }}"
+            placeholder="0x..."
+            style="font-family: monospace;"
+          >
+        </div>
 
-      <div class="mb-3">
-        <label class="form-label">Monero (XMR)</label>
-        <input type="text" name="payout_address_XMR" class="form-control font-monospace"
-               value="{{ merchant.get_payout_address('XMR') or '' }}"
-               placeholder="4...">
-      </div>
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Tether (USDT-TRC20)</label>
+          <input
+            type="text"
+            name="payout_address_USDT-TRC20"
+            class="torpay-form-input"
+            value="{{ merchant.get_payout_address('USDT-TRC20') or '' }}"
+            placeholder="T..."
+            style="font-family: monospace;"
+          >
+        </div>
 
-      <div class="mb-3">
-        <label class="form-label">Litecoin (LTC)</label>
-        <input type="text" name="payout_address_LTC" class="form-control font-monospace"
-               value="{{ merchant.get_payout_address('LTC') or '' }}"
-               placeholder="ltc1q...">
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Monero (XMR)</label>
+          <input
+            type="text"
+            name="payout_address_XMR"
+            class="torpay-form-input"
+            value="{{ merchant.get_payout_address('XMR') or '' }}"
+            placeholder="4..."
+            style="font-family: monospace;"
+          >
+        </div>
+
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Litecoin (LTC)</label>
+          <input
+            type="text"
+            name="payout_address_LTC"
+            class="torpay-form-input"
+            value="{{ merchant.get_payout_address('LTC') or '' }}"
+            placeholder="ltc1q..."
+            style="font-family: monospace;"
+          >
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Payout Preferences -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Payout Preferences</h5>
+  <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.3s;">
+    <div class="torpay-card-header">
+      <h2 class="torpay-card-title">Payout Preferences</h2>
     </div>
-    <div class="card-body">
-      <div class="mb-3">
-        <div class="form-check">
-          <input type="checkbox" name="auto_payout" class="form-check-input" id="auto_payout"
-                 {% if merchant.auto_payout %}checked{% endif %}>
-          <label class="form-check-label" for="auto_payout">Enable automatic payouts</label>
-        </div>
-        <small class="text-muted">Automatically process payouts when balance exceeds threshold.</small>
+    <div class="torpay-card-body">
+      <div class="torpay-form-group">
+        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
+          <input
+            type="checkbox"
+            name="auto_payout"
+            {% if merchant.auto_payout %}checked{% endif %}
+            style="width: 18px; height: 18px; accent-color: var(--torpay-primary);"
+          >
+          <span class="torpay-form-label" style="margin-bottom: 0;">Enable automatic payouts</span>
+        </label>
+        <p style="color: var(--torpay-gray-500); font-size: 0.75rem; margin-top: 0.5rem; margin-left: 1.75rem;">
+          Automatically process payouts when balance exceeds the minimum threshold.
+        </p>
       </div>
 
-      <div class="mb-3">
-        <label class="form-label">Minimum Payout Amount (USD)</label>
-        <input type="number" name="min_payout_amount" class="form-control"
-               value="{{ merchant.min_payout_amount|default(100, true) }}"
-               min="1" step="1">
-        <small class="text-muted">Minimum balance required before you can request a payout.</small>
+      <div class="torpay-form-group" style="max-width: 300px;">
+        <label class="torpay-form-label">Minimum Payout Amount (USD)</label>
+        <input
+          type="number"
+          name="min_payout_amount"
+          class="torpay-form-input"
+          value="{{ merchant.min_payout_amount|default(100, true) }}"
+          min="1"
+          step="1"
+        >
+        <p style="color: var(--torpay-gray-500); font-size: 0.75rem; margin-top: 0.5rem;">
+          Minimum balance required before you can request a payout.
+        </p>
       </div>
     </div>
   </div>
 
-  <div class="d-grid">
-    <button type="submit" class="btn btn-primary btn-lg">Save Settings</button>
-  </div>
+  <button type="submit" class="torpay-btn torpay-btn-primary" style="padding: 1rem 2rem; font-size: 1rem;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <polyline points="17 21 17 13 7 13 7 21"/>
+      <polyline points="7 3 7 8 15 8"/>
+    </svg>
+    Save Settings
+  </button>
 </form>
 {% endblock %}

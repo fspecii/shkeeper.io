@@ -1,110 +1,128 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Integration{% endblock %}
+{% block page_title %}Widget Integration{% endblock %}
 
 {% block content %}
-<div class="row">
-  <div class="col-lg-6">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Payment Widget Generator</h5>
+<div class="torpay-grid torpay-grid-2">
+  <!-- Left Column -->
+  <div>
+    <!-- Widget Generator -->
+    <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.1s;">
+      <div class="torpay-card-header">
+        <h2 class="torpay-card-title">Payment Widget Generator</h2>
       </div>
-      <div class="card-body">
-        <p class="text-muted">Configure your payment button and copy the code below.</p>
+      <div class="torpay-card-body">
+        <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1.5rem;">
+          Configure your payment button and copy the generated code.
+        </p>
 
-        <div class="mb-3">
-          <label class="form-label">Amount (USD)</label>
-          <input type="number" id="widget-amount" class="form-control" value="99.99" min="0.01" step="0.01">
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Amount (USD)</label>
+          <input type="number" id="widget-amount" class="torpay-form-input" value="99.99" min="0.01" step="0.01">
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Cryptocurrency</label>
-          <select id="widget-crypto" class="form-select">
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Cryptocurrency</label>
+          <select id="widget-crypto" class="torpay-form-input">
             {% for crypto in cryptos %}
             <option value="{{ crypto }}" {% if crypto == 'BTC' %}selected{% endif %}>{{ crypto }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Button Style</label>
-          <select id="widget-style" class="form-select">
-            <option value="default">Default (Orange)</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="minimal">Minimal</option>
-          </select>
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Button Text (Optional)</label>
+          <input type="text" id="widget-text" class="torpay-form-input" placeholder="Leave empty for default: Pay $XX.XX">
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Button Text</label>
-          <input type="text" id="widget-text" class="form-control" placeholder="Leave empty for default">
-          <small class="text-muted">Default: "Pay $XX.XX"</small>
+        <div class="torpay-form-group">
+          <label class="torpay-form-label">Callback URL (Optional)</label>
+          <input type="url" id="widget-callback" class="torpay-form-input" placeholder="https://your-site.com/webhook">
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Callback URL (Optional)</label>
-          <input type="url" id="widget-callback" class="form-control" placeholder="https://your-site.com/webhook">
-          <small class="text-muted">Override your default webhook URL for this button</small>
-        </div>
-
-        <button class="btn btn-primary" onclick="generateCode()">Generate Code</button>
+        <button class="torpay-btn torpay-btn-primary" onclick="generateCode()" style="width: 100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+          Generate Code
+        </button>
       </div>
     </div>
 
     <!-- Quick Integration -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Quick Integration</h5>
+    <div class="torpay-card torpay-animate" style="animation-delay: 0.2s;">
+      <div class="torpay-card-header">
+        <h2 class="torpay-card-title">Quick Start</h2>
       </div>
-      <div class="card-body">
-        <p>Add these two lines anywhere on your page to enable TorPay:</p>
+      <div class="torpay-card-body">
+        <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1.5rem;">
+          Add these two snippets to any page to enable TorPay payments.
+        </p>
 
-        <h6 class="mt-3">1. Add the script (once per page)</h6>
-        <pre class="bg-dark text-light p-3 rounded" id="script-tag"><code>&lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;</code></pre>
-        <button class="btn btn-sm btn-outline-primary mb-3" onclick="copyCode('script-tag')">Copy</button>
+        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">1. Add the script (once per page)</h3>
+        <div class="torpay-code-block" id="script-tag" style="margin-bottom: 1rem;">
+<pre style="margin: 0; color: #e2e8f0;">&lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;</pre>
+        </div>
+        <button class="torpay-btn torpay-btn-secondary torpay-btn-sm torpay-copy-btn" onclick="copyCode('script-tag', this)" style="margin-bottom: 1.5rem;">Copy</button>
 
-        <h6>2. Initialize (once per page)</h6>
-        <pre class="bg-dark text-light p-3 rounded" id="init-code"><code>&lt;script&gt;
-SHKeeper.init({
-  apiKey: '{{ merchant.api_key }}',
+        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">2. Initialize TorPay</h3>
+        <div class="torpay-code-block" id="init-code">
+<pre style="margin: 0; color: #e2e8f0;">&lt;script&gt;
+TorPay.init({
+  apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
   baseUrl: '{{ base_url }}'
 });
-&lt;/script&gt;</code></pre>
-        <button class="btn btn-sm btn-outline-primary mb-3" onclick="copyCode('init-code')">Copy</button>
+&lt;/script&gt;</pre>
+        </div>
+        <button class="torpay-btn torpay-btn-secondary torpay-btn-sm torpay-copy-btn" onclick="copyCode('init-code', this)" style="margin-top: 1rem;">Copy</button>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-6">
-    <!-- Preview -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Live Preview</h5>
+  <!-- Right Column -->
+  <div>
+    <!-- Live Preview -->
+    <div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.15s;">
+      <div class="torpay-card-header">
+        <h2 class="torpay-card-title">Live Preview</h2>
       </div>
-      <div class="card-body text-center" style="min-height: 100px; display: flex; align-items: center; justify-content: center;">
+      <div class="torpay-card-body" style="display: flex; align-items: center; justify-content: center; min-height: 120px; background: var(--torpay-gray-50);">
         <div id="preview-container"></div>
       </div>
     </div>
 
     <!-- Generated Code -->
-    <div class="card mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Generated Code</h5>
-        <button class="btn btn-sm btn-primary" onclick="copyCode('generated-code')">Copy Code</button>
+    <div class="torpay-card torpay-animate" style="animation-delay: 0.25s;">
+      <div class="torpay-card-header">
+        <h2 class="torpay-card-title">Generated Code</h2>
+        <button class="torpay-btn torpay-btn-primary torpay-btn-sm torpay-copy-btn" onclick="copyCode('generated-code', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy
+        </button>
       </div>
-      <div class="card-body">
-        <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;" id="generated-code"><code><!-- Code will appear here --></code></pre>
+      <div class="torpay-card-body" style="padding: 0;">
+        <div class="torpay-code-block" id="generated-code" style="border-radius: 0; max-height: 350px; overflow-y: auto;">
+<pre style="margin: 0; color: #e2e8f0;"><!-- Code will appear here --></pre>
+        </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Full Page Example -->
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Complete HTML Example</h5>
-      </div>
-      <div class="card-body">
-        <pre class="bg-dark text-light p-3 rounded" style="font-size: 12px;" id="full-example"><code>&lt;!DOCTYPE html&gt;
+<!-- Full Example -->
+<div class="torpay-card torpay-animate" style="margin-top: 2rem; animation-delay: 0.35s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Complete HTML Example</h2>
+    <button class="torpay-btn torpay-btn-secondary torpay-btn-sm torpay-copy-btn" onclick="copyCode('full-example', this)">Copy Full Example</button>
+  </div>
+  <div class="torpay-card-body" style="padding: 0;">
+    <div class="torpay-code-block" id="full-example" style="border-radius: 0;">
+<pre style="margin: 0; color: #e2e8f0; font-size: 0.75rem;">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;
   &lt;title&gt;Checkout - Your Store&lt;/title&gt;
@@ -116,185 +134,152 @@ SHKeeper.init({
   &lt;!-- TorPay Payment Button --&gt;
   &lt;div id="torpay-button"&gt;&lt;/div&gt;
 
-  &lt;!-- TorPay Widget --&gt;
   &lt;script src="{{ base_url }}/static/js/shkeeper-widget.js"&gt;&lt;/script&gt;
   &lt;script&gt;
-    SHKeeper.init({
-      apiKey: '{{ merchant.api_key }}',
+    TorPay.init({
+      apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
       baseUrl: '{{ base_url }}'
     });
 
-    SHKeeper.createButton('#torpay-button', {
+    TorPay.createButton('#torpay-button', {
       amount: 99.99,
       currency: 'USD',
       crypto: 'BTC',
       orderId: 'ORDER-123',
 
       onPaymentComplete: function(invoice) {
-        // Payment received! Redirect to thank you page
         window.location.href = '/thank-you?order=' + invoice.external_id;
       }
     });
   &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt;</code></pre>
-        <button class="btn btn-sm btn-outline-primary" onclick="copyCode('full-example')">Copy Full Example</button>
-      </div>
+&lt;/html&gt;</pre>
     </div>
   </div>
 </div>
 
 <!-- Advanced Options -->
-<div class="row mt-4">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Advanced: Programmatic Payments</h5>
-      </div>
-      <div class="card-body">
-        <p>For more control, you can create payments programmatically:</p>
-
-        <pre class="bg-dark text-light p-3 rounded"><code>// Open payment modal directly
+<div class="torpay-card torpay-animate" style="margin-top: 2rem; animation-delay: 0.45s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Advanced: Programmatic Payments</h2>
+  </div>
+  <div class="torpay-card-body">
+    <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1.5rem;">
+      For more control, you can create payments programmatically.
+    </p>
+    <div class="torpay-code-block">
+<pre style="margin: 0; color: #e2e8f0; font-size: 0.75rem;"><span style="color: #94a3b8;">// Open payment modal directly</span>
 document.getElementById('my-checkout-btn').addEventListener('click', function() {
-  SHKeeper.openPaymentModal({
-    amount: getCartTotal(),           // Dynamic amount from your cart
+  TorPay.openPaymentModal({
+    amount: getCartTotal(),
     currency: 'USD',
     crypto: 'BTC',
-    orderId: generateOrderId(),       // Your order ID
+    orderId: generateOrderId(),
 
     onSuccess: function(invoice) {
-      // Payment invoice created
       console.log('Invoice:', invoice.id);
       console.log('Send to:', invoice.dest);
-      console.log('Amount:', invoice.amount_crypto, invoice.wallet);
     },
 
     onPaymentComplete: function(invoice) {
-      // Payment received!
       submitOrder(invoice);
     },
 
     onError: function(error) {
       console.error('Payment failed:', error);
-      showError('Payment could not be created. Please try again.');
     }
   });
 });
 
-// Or create payment via API and handle UI yourself
-SHKeeper.createPayment({
+<span style="color: #94a3b8;">// Or create payment via API and handle UI yourself</span>
+TorPay.createPayment({
   amount: 99.99,
   currency: 'USD',
   crypto: 'BTC',
   orderId: 'order-123'
 }, function(error, invoice) {
-  if (error) {
-    console.error(error);
-    return;
-  }
-  // Show your own payment UI
+  if (error) return console.error(error);
   showPaymentAddress(invoice.dest);
   showQRCode(invoice.qr_url);
   startPollingForPayment(invoice.id);
-});</code></pre>
-      </div>
+});</pre>
     </div>
   </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/shkeeper-widget.js') }}"></script>
 <script>
-// Initialize widget
-SHKeeper.init({
+// Available cryptos from database
+var availableCryptos = {{ cryptos | tojson }};
+
+TorPay.init({
   apiKey: '{{ merchant.api_key }}',
   baseUrl: '{{ base_url }}'
 });
 
 function generateCode() {
   var amount = document.getElementById('widget-amount').value;
-  var crypto = document.getElementById('widget-crypto').value;
-  var style = document.getElementById('widget-style').value;
   var buttonText = document.getElementById('widget-text').value;
   var callback = document.getElementById('widget-callback').value;
 
-  var options = {
-    amount: parseFloat(amount),
-    currency: 'USD',
-    crypto: crypto
-  };
+  // Format cryptos array for code display
+  var cryptosStr = JSON.stringify(availableCryptos);
 
-  if (buttonText) options.buttonText = buttonText;
-  if (callback) options.callbackUrl = callback;
-
-  // Generate code
   var code = `<!-- TorPay Payment Button -->
 <div id="torpay-button"></div>
 
 <script src="{{ base_url }}/static/js/shkeeper-widget.js"><\/script>
 <script>
-SHKeeper.init({
+TorPay.init({
   apiKey: '{{ merchant.api_key }}',
   baseUrl: '{{ base_url }}'
 });
 
-SHKeeper.createButton('#torpay-button', {
+TorPay.createButton('#torpay-button', {
   amount: ${amount},
   currency: 'USD',
-  crypto: '${crypto}'${buttonText ? `,
+  cryptos: ${cryptosStr}${buttonText ? `,
   buttonText: '${buttonText}'` : ''}${callback ? `,
   callbackUrl: '${callback}'` : ''},
 
   onPaymentComplete: function(invoice) {
-    // Payment received! Handle success
     console.log('Payment complete:', invoice);
-    // window.location.href = '/thank-you?order=' + invoice.external_id;
   }
 });
 <\/script>`;
 
-  document.querySelector('#generated-code code').textContent = code;
-
-  // Update preview
-  updatePreview(options);
+  document.querySelector('#generated-code pre').textContent = code;
+  updatePreview({ amount: parseFloat(amount), buttonText: buttonText });
 }
 
 function updatePreview(options) {
   var container = document.getElementById('preview-container');
   container.innerHTML = '';
-
-  SHKeeper.createButton(container, {
+  TorPay.createButton(container, {
     amount: options.amount,
     currency: 'USD',
-    crypto: options.crypto,
+    // Use available cryptos from DB - default to first one (usually BTC)
+    cryptos: availableCryptos,
     buttonText: options.buttonText,
     orderId: 'preview-' + Date.now(),
-    onSuccess: function(data) {
-      console.log('Preview payment created:', data);
+    demo: true,  // Use demo mode to show UI without real API calls
+    onSuccess: function(data) { console.log('Preview created:', data); }
+  });
+}
+
+function copyCode(elementId, button) {
+  var el = document.getElementById(elementId);
+  var pre = el.querySelector('pre');
+  var text = pre ? pre.textContent : el.textContent;
+
+  navigator.clipboard.writeText(text).then(function() {
+    if (button) {
+      button.classList.add('copied');
+      setTimeout(function() { button.classList.remove('copied'); }, 2000);
     }
   });
 }
 
-function copyCode(elementId) {
-  var codeEl = document.querySelector('#' + elementId + ' code');
-  var text = codeEl ? codeEl.textContent : document.getElementById(elementId).textContent;
-
-  navigator.clipboard.writeText(text).then(function() {
-    alert('Code copied to clipboard!');
-  }).catch(function(err) {
-    // Fallback
-    var textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    alert('Code copied to clipboard!');
-  });
-}
-
-// Generate initial code on page load
-document.addEventListener('DOMContentLoaded', function() {
-  generateCode();
-});
+document.addEventListener('DOMContentLoaded', generateCode);
 </script>
 {% endblock %}

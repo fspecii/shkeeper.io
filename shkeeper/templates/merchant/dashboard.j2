@@ -1,146 +1,160 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('merchant_auth.integration') }}" class="torpay-btn torpay-btn-primary">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="16 18 22 12 16 6"/>
+    <polyline points="8 6 2 12 8 18"/>
+  </svg>
+  Integrate Widget
+</a>
+{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-  <!-- Total Balance Card -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title text-muted">Available Balance</h5>
-        <h2 class="text-success">${{ "%.2f"|format(total_balance|float) }}</h2>
-        <small class="text-muted">Ready to withdraw</small>
-      </div>
-    </div>
+<!-- Stats Grid -->
+<div class="torpay-grid torpay-grid-3" style="margin-bottom: 2rem;">
+  <div class="torpay-stat-card success torpay-animate" style="animation-delay: 0.1s;">
+    <div class="torpay-stat-label">Available Balance</div>
+    <div class="torpay-stat-value success">${{ "%.2f"|format(total_balance|float) }}</div>
+    <div class="torpay-stat-meta">Ready to withdraw</div>
   </div>
 
-  <!-- Status Card -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title text-muted">Account Status</h5>
-        <h2>
-          {% if merchant.status.value == 'active' %}
-            <span class="badge bg-success">Active</span>
-          {% elif merchant.status.value == 'pending' %}
-            <span class="badge bg-warning">Pending</span>
-          {% else %}
-            <span class="badge bg-danger">Suspended</span>
-          {% endif %}
-        </h2>
-        <small class="text-muted">Member since {{ merchant.created_at.strftime('%Y-%m-%d') if merchant.created_at else 'N/A' }}</small>
-      </div>
+  <div class="torpay-stat-card torpay-animate" style="animation-delay: 0.2s;">
+    <div class="torpay-stat-label">Account Status</div>
+    <div class="torpay-stat-value">
+      {% if merchant.status.value == 'active' %}
+        <span class="torpay-badge success">Active</span>
+      {% elif merchant.status.value == 'pending' %}
+        <span class="torpay-badge warning">Pending</span>
+      {% else %}
+        <span class="torpay-badge danger">Suspended</span>
+      {% endif %}
     </div>
+    <div class="torpay-stat-meta">Member since {{ merchant.created_at.strftime('%B %d, %Y') if merchant.created_at else 'N/A' }}</div>
   </div>
 
-  <!-- Pending Payouts Card -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title text-muted">Pending Payouts</h5>
-        <h2>{{ pending_payouts|length }}</h2>
-        <small class="text-muted">
-          <a href="{{ url_for('merchant_auth.payouts') }}">View all payouts</a>
-        </small>
-      </div>
+  <div class="torpay-stat-card warning torpay-animate" style="animation-delay: 0.3s;">
+    <div class="torpay-stat-label">Pending Payouts</div>
+    <div class="torpay-stat-value">{{ pending_payouts|length }}</div>
+    <div class="torpay-stat-meta">
+      <a href="{{ url_for('merchant_auth.payouts') }}" style="color: inherit; text-decoration: none;">View all payouts &rarr;</a>
     </div>
   </div>
 </div>
 
 <!-- Balances by Currency -->
-<div class="row mb-4">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Balances by Currency</h5>
-      </div>
-      <div class="card-body">
-        {% if balances %}
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Currency</th>
-                <th class="text-end">Total Received</th>
-                <th class="text-end">Commission Paid</th>
-                <th class="text-end">Withdrawn</th>
-                <th class="text-end">Available</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for balance in balances %}
-              <tr>
-                <td><strong>{{ balance.crypto }}</strong></td>
-                <td class="text-end">${{ "%.2f"|format(balance.total_received|float) }}</td>
-                <td class="text-end text-danger">${{ "%.2f"|format(balance.total_commission|float) }}</td>
-                <td class="text-end">${{ "%.2f"|format(balance.total_paid_out|float) }}</td>
-                <td class="text-end text-success"><strong>${{ "%.2f"|format(balance.available_balance|float) }}</strong></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p class="text-muted text-center">No transactions yet. Start accepting payments to see your balances.</p>
-        {% endif %}
-      </div>
+<div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.4s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Balances by Currency</h2>
+    <a href="{{ url_for('merchant_auth.balances') }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">View Details</a>
+  </div>
+  <div class="torpay-card-body" style="padding: 0;">
+    {% if balances %}
+    <table class="torpay-table">
+      <thead>
+        <tr>
+          <th>Currency</th>
+          <th style="text-align: right;">Total Received</th>
+          <th style="text-align: right;">Commission Paid</th>
+          <th style="text-align: right;">Withdrawn</th>
+          <th style="text-align: right;">Available</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for balance in balances %}
+        <tr>
+          <td>
+            <strong style="color: var(--torpay-primary);">{{ balance.crypto }}</strong>
+          </td>
+          <td style="text-align: right;">${{ "%.2f"|format(balance.total_received|float) }}</td>
+          <td style="text-align: right; color: var(--torpay-danger);">-${{ "%.2f"|format(balance.total_commission|float) }}</td>
+          <td style="text-align: right;">${{ "%.2f"|format(balance.total_paid_out|float) }}</td>
+          <td style="text-align: right;">
+            <strong style="color: var(--torpay-success);">${{ "%.2f"|format(balance.available_balance|float) }}</strong>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
+      </svg>
+      <div class="torpay-empty-title">No balances yet</div>
+      <p>Start accepting payments to see your balances here.</p>
     </div>
+    {% endif %}
   </div>
 </div>
 
 <!-- Recent Invoices -->
-<div class="row">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Recent Invoices</h5>
-        <a href="{{ url_for('merchant_auth.transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
-      </div>
-      <div class="card-body">
-        {% if recent_invoices %}
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>External ID</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for invoice in recent_invoices %}
-              <tr>
-                <td>{{ invoice.id }}</td>
-                <td><code>{{ invoice.external_id }}</code></td>
-                <td>
-                  ${{ "%.2f"|format(invoice.amount_fiat|float) }}
-                  <small class="text-muted">({{ invoice.crypto }})</small>
-                </td>
-                <td>
-                  {% if invoice.status.name == 'PAID' or invoice.status.name == 'OVERPAID' %}
-                    <span class="badge bg-success">{{ invoice.status.name }}</span>
-                  {% elif invoice.status.name == 'PARTIAL' %}
-                    <span class="badge bg-warning">{{ invoice.status.name }}</span>
-                  {% elif invoice.status.name == 'UNPAID' %}
-                    <span class="badge bg-secondary">{{ invoice.status.name }}</span>
-                  {% else %}
-                    <span class="badge bg-info">{{ invoice.status.name }}</span>
-                  {% endif %}
-                </td>
-                <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') if invoice.created_at else 'N/A' }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p class="text-muted text-center">No invoices yet. Use the API to create your first invoice.</p>
-        {% endif %}
-      </div>
+<div class="torpay-card torpay-animate" style="animation-delay: 0.5s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Recent Invoices</h2>
+    <a href="{{ url_for('merchant_auth.transactions') }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">View All</a>
+  </div>
+  <div class="torpay-card-body" style="padding: 0;">
+    {% if recent_invoices %}
+    <table class="torpay-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>External ID</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in recent_invoices %}
+        <tr>
+          <td>
+            <span class="torpay-code">{{ invoice.id }}</span>
+          </td>
+          <td>
+            <span class="torpay-code">{{ invoice.external_id or '-' }}</span>
+          </td>
+          <td>
+            <strong>${{ "%.2f"|format(invoice.amount_fiat|float) }}</strong>
+            <span style="color: var(--torpay-gray-500); font-size: 0.75rem;">{{ invoice.crypto }}</span>
+          </td>
+          <td>
+            {% if invoice.status.name == 'PAID' or invoice.status.name == 'OVERPAID' %}
+              <span class="torpay-badge success">{{ invoice.status.name }}</span>
+            {% elif invoice.status.name == 'PARTIAL' %}
+              <span class="torpay-badge warning">{{ invoice.status.name }}</span>
+            {% elif invoice.status.name == 'UNPAID' %}
+              <span class="torpay-badge secondary">{{ invoice.status.name }}</span>
+            {% else %}
+              <span class="torpay-badge info">{{ invoice.status.name }}</span>
+            {% endif %}
+          </td>
+          <td style="color: var(--torpay-gray-500);">
+            {{ invoice.created_at.strftime('%b %d, %Y %H:%M') if invoice.created_at else 'N/A' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <div class="torpay-empty-title">No invoices yet</div>
+      <p>Use the API to create your first invoice and start accepting payments.</p>
+      <a href="{{ url_for('merchant_auth.docs') }}" class="torpay-btn torpay-btn-primary" style="margin-top: 1rem;">View API Docs</a>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

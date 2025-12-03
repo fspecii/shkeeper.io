@@ -1,20 +1,21 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Payouts{% endblock %}
+{% block page_title %}Payouts{% endblock %}
 
 {% block content %}
 <!-- Request Payout Form -->
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="mb-0">Request Payout</h5>
+<div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.1s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Request Payout</h2>
   </div>
-  <div class="card-body">
+  <div class="torpay-card-body">
     {% if balances %}
     <form method="post" action="{{ url_for('merchant_auth.request_payout') }}">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Currency</label>
-          <select name="crypto" class="form-select" required>
+      <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+        <div class="torpay-form-group" style="margin-bottom: 0;">
+          <label class="torpay-form-label">Currency</label>
+          <select name="crypto" class="torpay-form-input" required>
             {% for balance in balances %}
             <option value="{{ balance.crypto }}" {% if balance.available_balance and balance.available_balance > 0 %}{% else %}disabled{% endif %}>
               {{ balance.crypto }} - Available: ${{ "%.2f"|format(balance.available_balance|float) }}
@@ -22,113 +23,139 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Amount (USD)</label>
-          <input type="number" name="amount" class="form-control" placeholder="0 = withdraw all" min="0" step="0.01">
-          <small class="text-muted">Enter 0 to withdraw entire balance</small>
+        <div class="torpay-form-group" style="margin-bottom: 0;">
+          <label class="torpay-form-label">Amount (USD)</label>
+          <input type="number" name="amount" class="torpay-form-input" placeholder="0 = withdraw all" min="0" step="0.01">
         </div>
-        <div class="col-md-4 mb-3 d-flex align-items-end">
-          <button type="submit" class="btn btn-success">Request Payout</button>
-        </div>
+        <button type="submit" class="torpay-btn torpay-btn-primary" style="height: 46px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+          </svg>
+          Request Payout
+        </button>
       </div>
     </form>
-    <p class="text-muted mt-2">
-      <small>Make sure you have configured your payout addresses in <a href="{{ url_for('merchant_auth.settings') }}">Settings</a> before requesting a payout.</small>
-    </p>
+
+    <div class="torpay-alert torpay-alert-info" style="margin-top: 1.5rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="16" x2="12" y2="12"/>
+        <line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+      <span>Make sure you have configured your payout addresses in <a href="{{ url_for('merchant_auth.settings') }}" style="color: inherit; font-weight: 600;">Settings</a> before requesting a payout. Enter 0 to withdraw the entire balance.</span>
+    </div>
     {% else %}
-    <p class="text-muted">No balance available for payout.</p>
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
+      </svg>
+      <div class="torpay-empty-title">No balance available</div>
+      <p>Start accepting payments to build up your balance for payouts.</p>
+    </div>
     {% endif %}
   </div>
 </div>
 
 <!-- Payout History -->
-<div class="card">
-  <div class="card-header">
-    <h5 class="mb-0">Payout History</h5>
+<div class="torpay-card torpay-animate" style="animation-delay: 0.2s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Payout History</h2>
+    <span style="color: var(--torpay-gray-500); font-size: 0.875rem;">
+      {{ payouts.total if payouts.total else 0 }} total payouts
+    </span>
   </div>
-  <div class="card-body">
+  <div class="torpay-card-body" style="padding: 0;">
     {% if payouts.items %}
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Currency</th>
-            <th>Amount</th>
-            <th>Destination</th>
-            <th>Status</th>
-            <th>TX Hash</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for payout in payouts.items %}
-          <tr>
-            <td>{{ payout.id }}</td>
-            <td>{{ payout.crypto }}</td>
-            <td>${{ "%.2f"|format(payout.amount_fiat|float) }}</td>
-            <td><code title="{{ payout.dest_address }}">{{ payout.dest_address[:20] }}...</code></td>
-            <td>
-              {% if payout.status.value == 'completed' %}
-                <span class="badge bg-success">Completed</span>
-              {% elif payout.status.value == 'pending' %}
-                <span class="badge bg-warning">Pending</span>
-              {% elif payout.status.value == 'approved' %}
-                <span class="badge bg-info">Approved</span>
-              {% elif payout.status.value == 'processing' %}
-                <span class="badge bg-primary">Processing</span>
-              {% elif payout.status.value == 'failed' %}
-                <span class="badge bg-danger">Failed</span>
-              {% elif payout.status.value == 'rejected' %}
-                <span class="badge bg-danger">Rejected</span>
-              {% else %}
-                <span class="badge bg-secondary">{{ payout.status.value }}</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if payout.tx_hash %}
-              <code title="{{ payout.tx_hash }}">{{ payout.tx_hash[:20] }}...</code>
-              {% else %}
-              -
-              {% endif %}
-            </td>
-            <td>{{ payout.created_at.strftime('%Y-%m-%d %H:%M') if payout.created_at else 'N/A' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="torpay-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Currency</th>
+          <th style="text-align: right;">Amount</th>
+          <th>Destination</th>
+          <th>Status</th>
+          <th>TX Hash</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payout in payouts.items %}
+        <tr>
+          <td><span class="torpay-code">{{ payout.id }}</span></td>
+          <td><strong style="color: var(--torpay-primary);">{{ payout.crypto }}</strong></td>
+          <td style="text-align: right;">${{ "%.2f"|format(payout.amount_fiat|float) }}</td>
+          <td>
+            <span class="torpay-code" title="{{ payout.dest_address }}">{{ payout.dest_address[:16] }}...</span>
+          </td>
+          <td>
+            {% if payout.status.value == 'completed' %}
+              <span class="torpay-badge success">Completed</span>
+            {% elif payout.status.value == 'pending' %}
+              <span class="torpay-badge warning">Pending</span>
+            {% elif payout.status.value == 'approved' %}
+              <span class="torpay-badge info">Approved</span>
+            {% elif payout.status.value == 'processing' %}
+              <span class="torpay-badge info">Processing</span>
+            {% elif payout.status.value == 'failed' %}
+              <span class="torpay-badge danger">Failed</span>
+            {% elif payout.status.value == 'rejected' %}
+              <span class="torpay-badge danger">Rejected</span>
+            {% else %}
+              <span class="torpay-badge secondary">{{ payout.status.value }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if payout.tx_hash %}
+            <span class="torpay-code" title="{{ payout.tx_hash }}">{{ payout.tx_hash[:12] }}...</span>
+            {% else %}
+            <span style="color: var(--torpay-gray-400);">-</span>
+            {% endif %}
+          </td>
+          <td style="color: var(--torpay-gray-500);">
+            {{ payout.created_at.strftime('%b %d, %Y %H:%M') if payout.created_at else 'N/A' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
     <!-- Pagination -->
     {% if payouts.pages > 1 %}
-    <nav aria-label="Page navigation">
-      <ul class="pagination justify-content-center">
-        {% if payouts.has_prev %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('merchant_auth.payouts', page=payouts.prev_num) }}">Previous</a>
-        </li>
-        {% endif %}
+    <div style="padding: 1.5rem; border-top: 1px solid var(--torpay-gray-100); display: flex; justify-content: center; gap: 0.5rem;">
+      {% if payouts.has_prev %}
+      <a href="{{ url_for('merchant_auth.payouts', page=payouts.prev_num) }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Previous
+      </a>
+      {% endif %}
 
-        {% for page_num in payouts.iter_pages() %}
-          {% if page_num %}
-            <li class="page-item {% if page_num == payouts.page %}active{% endif %}">
-              <a class="page-link" href="{{ url_for('merchant_auth.payouts', page=page_num) }}">{{ page_num }}</a>
-            </li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-        {% endfor %}
+      <span style="display: flex; align-items: center; padding: 0 1rem; color: var(--torpay-gray-500); font-size: 0.875rem;">
+        Page {{ payouts.page }} of {{ payouts.pages }}
+      </span>
 
-        {% if payouts.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('merchant_auth.payouts', page=payouts.next_num) }}">Next</a>
-        </li>
-        {% endif %}
-      </ul>
-    </nav>
+      {% if payouts.has_next %}
+      <a href="{{ url_for('merchant_auth.payouts', page=payouts.next_num) }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </a>
+      {% endif %}
+    </div>
     {% endif %}
     {% else %}
-    <p class="text-muted text-center">No payout history yet.</p>
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      <div class="torpay-empty-title">No payout history</div>
+      <p>Your completed payouts will appear here.</p>
+    </div>
     {% endif %}
   </div>
 </div>

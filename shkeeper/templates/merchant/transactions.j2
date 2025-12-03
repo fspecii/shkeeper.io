@@ -1,97 +1,109 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}Transactions{% endblock %}
+{% block page_title %}Transactions{% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h5 class="mb-0">Invoice History</h5>
+<div class="torpay-card torpay-animate">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Invoice History</h2>
+    <span style="color: var(--torpay-gray-500); font-size: 0.875rem;">
+      {{ invoices.total if invoices.total else 0 }} total invoices
+    </span>
   </div>
-  <div class="card-body">
+  <div class="torpay-card-body" style="padding: 0;">
     {% if invoices.items %}
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>External ID</th>
-            <th>Crypto</th>
-            <th>Amount</th>
-            <th>Commission</th>
-            <th>Net Amount</th>
-            <th>Status</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for invoice in invoices.items %}
-          <tr>
-            <td>{{ invoice.id }}</td>
-            <td><code>{{ invoice.external_id }}</code></td>
-            <td>{{ invoice.crypto }}</td>
-            <td>${{ "%.2f"|format(invoice.amount_fiat|float) }}</td>
-            <td class="text-danger">
-              {% if invoice.commission_amount %}
-              ${{ "%.2f"|format(invoice.commission_amount|float) }}
-              {% else %}
-              -
-              {% endif %}
-            </td>
-            <td class="text-success">
-              {% if invoice.net_amount %}
-              ${{ "%.2f"|format(invoice.net_amount|float) }}
-              {% else %}
-              -
-              {% endif %}
-            </td>
-            <td>
-              {% if invoice.status.name == 'PAID' or invoice.status.name == 'OVERPAID' %}
-                <span class="badge bg-success">{{ invoice.status.name }}</span>
-              {% elif invoice.status.name == 'PARTIAL' %}
-                <span class="badge bg-warning">{{ invoice.status.name }}</span>
-              {% elif invoice.status.name == 'UNPAID' %}
-                <span class="badge bg-secondary">{{ invoice.status.name }}</span>
-              {% else %}
-                <span class="badge bg-info">{{ invoice.status.name }}</span>
-              {% endif %}
-            </td>
-            <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') if invoice.created_at else 'N/A' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="torpay-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>External ID</th>
+          <th>Crypto</th>
+          <th style="text-align: right;">Amount</th>
+          <th style="text-align: right;">Commission</th>
+          <th style="text-align: right;">Net Amount</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices.items %}
+        <tr>
+          <td><span class="torpay-code">{{ invoice.id }}</span></td>
+          <td><span class="torpay-code">{{ invoice.external_id or '-' }}</span></td>
+          <td><strong style="color: var(--torpay-primary);">{{ invoice.crypto }}</strong></td>
+          <td style="text-align: right;">${{ "%.2f"|format(invoice.amount_fiat|float) }}</td>
+          <td style="text-align: right; color: var(--torpay-danger);">
+            {% if invoice.commission_amount %}
+            -${{ "%.2f"|format(invoice.commission_amount|float) }}
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if invoice.net_amount %}
+            <strong style="color: var(--torpay-success);">${{ "%.2f"|format(invoice.net_amount|float) }}</strong>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>
+            {% if invoice.status.name == 'PAID' or invoice.status.name == 'OVERPAID' %}
+              <span class="torpay-badge success">{{ invoice.status.name }}</span>
+            {% elif invoice.status.name == 'PARTIAL' %}
+              <span class="torpay-badge warning">{{ invoice.status.name }}</span>
+            {% elif invoice.status.name == 'UNPAID' %}
+              <span class="torpay-badge secondary">{{ invoice.status.name }}</span>
+            {% else %}
+              <span class="torpay-badge info">{{ invoice.status.name }}</span>
+            {% endif %}
+          </td>
+          <td style="color: var(--torpay-gray-500);">
+            {{ invoice.created_at.strftime('%b %d, %Y %H:%M') if invoice.created_at else 'N/A' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
     <!-- Pagination -->
     {% if invoices.pages > 1 %}
-    <nav aria-label="Page navigation">
-      <ul class="pagination justify-content-center">
-        {% if invoices.has_prev %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=invoices.prev_num) }}">Previous</a>
-        </li>
-        {% endif %}
+    <div style="padding: 1.5rem; border-top: 1px solid var(--torpay-gray-100); display: flex; justify-content: center; gap: 0.5rem;">
+      {% if invoices.has_prev %}
+      <a href="{{ url_for('merchant_auth.transactions', page=invoices.prev_num) }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Previous
+      </a>
+      {% endif %}
 
-        {% for page_num in invoices.iter_pages() %}
-          {% if page_num %}
-            <li class="page-item {% if page_num == invoices.page %}active{% endif %}">
-              <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=page_num) }}">{{ page_num }}</a>
-            </li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-        {% endfor %}
+      <span style="display: flex; align-items: center; padding: 0 1rem; color: var(--torpay-gray-500); font-size: 0.875rem;">
+        Page {{ invoices.page }} of {{ invoices.pages }}
+      </span>
 
-        {% if invoices.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('merchant_auth.transactions', page=invoices.next_num) }}">Next</a>
-        </li>
-        {% endif %}
-      </ul>
-    </nav>
+      {% if invoices.has_next %}
+      <a href="{{ url_for('merchant_auth.transactions', page=invoices.next_num) }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </a>
+      {% endif %}
+    </div>
     {% endif %}
     {% else %}
-    <p class="text-muted text-center">No invoices yet. Use the API to create your first invoice.</p>
+    <div class="torpay-empty">
+      <svg class="torpay-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <div class="torpay-empty-title">No invoices yet</div>
+      <p>Use the API to create your first invoice and start accepting payments.</p>
+      <a href="{{ url_for('merchant_auth.docs') }}" class="torpay-btn torpay-btn-primary" style="margin-top: 1rem;">View API Docs</a>
+    </div>
     {% endif %}
   </div>
 </div>

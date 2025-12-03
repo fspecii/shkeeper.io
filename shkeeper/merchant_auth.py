@@ -31,6 +31,12 @@ from shkeeper.auth import merchant_login_required
 bp = Blueprint("merchant_auth", __name__, url_prefix="/merchant")
 
 
+@bp.context_processor
+def inject_theme():
+    """Inject theme variable for all merchant templates."""
+    return {"theme": request.cookies.get("theme", "light")}
+
+
 # ============================================================================
 # Authentication Routes
 # ============================================================================
@@ -474,9 +480,18 @@ def integration():
     """Widget integration and embed code generator."""
     merchant = Merchant.query.get(session["merchant_id"])
 
-    # Get list of available cryptocurrencies
+    # Get list of available cryptocurrencies, ordered with BTC first
     from shkeeper.modules.classes.crypto import Crypto
     cryptos = list(Crypto.instances.keys())
+
+    # Sort with BTC first, then alphabetically
+    preferred_order = ['BTC', 'ETH', 'LTC', 'XMR', 'USDT-TRC20', 'USDT-ERC20', 'TRX', 'DOGE']
+    def sort_key(c):
+        try:
+            return preferred_order.index(c)
+        except ValueError:
+            return len(preferred_order) + ord(c[0])
+    cryptos.sort(key=sort_key)
 
     # Build base URL
     base_url = request.host_url.rstrip('/')

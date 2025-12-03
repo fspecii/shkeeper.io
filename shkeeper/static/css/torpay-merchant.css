@@ -1,0 +1,776 @@
+/* TorPay Merchant Portal - Modern Dashboard Styles */
+
+:root {
+  --torpay-primary: #6366f1;
+  --torpay-primary-dark: #4f46e5;
+  --torpay-primary-light: #818cf8;
+  --torpay-secondary: #8b5cf6;
+  --torpay-accent: #06b6d4;
+  --torpay-success: #10b981;
+  --torpay-warning: #f59e0b;
+  --torpay-danger: #ef4444;
+  --torpay-dark: #1e1b4b;
+  --torpay-darker: #0f0d24;
+  --torpay-gray-50: #f8fafc;
+  --torpay-gray-100: #f1f5f9;
+  --torpay-gray-200: #e2e8f0;
+  --torpay-gray-300: #cbd5e1;
+  --torpay-gray-400: #94a3b8;
+  --torpay-gray-500: #64748b;
+  --torpay-gray-600: #475569;
+  --torpay-gray-700: #334155;
+  --torpay-gray-800: #1e293b;
+  --torpay-gray-900: #0f172a;
+  --torpay-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  --torpay-gradient-dark: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --torpay-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --torpay-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --torpay-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Base Styles */
+body.torpay-merchant {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--torpay-gray-50);
+  color: var(--torpay-gray-800);
+  min-height: 100vh;
+}
+
+body.torpay-merchant.dark-mode {
+  background: var(--torpay-darker);
+  color: var(--torpay-gray-100);
+}
+
+/* Sidebar */
+.torpay-sidebar {
+  background: var(--torpay-gradient);
+  min-height: 100vh;
+  padding: 0;
+  box-shadow: var(--torpay-shadow-lg);
+  position: fixed;
+  width: 260px;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.torpay-sidebar-header {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.torpay-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.torpay-logo-icon {
+  width: 42px;
+  height: 42px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.torpay-logo-text {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.torpay-merchant-name {
+  color: rgba(255,255,255,0.8);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.torpay-nav {
+  padding: 1rem 0;
+}
+
+.torpay-nav-section {
+  padding: 0 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.torpay-nav-label {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.torpay-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: rgba(255,255,255,0.85);
+  text-decoration: none;
+  border-radius: 10px;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.torpay-nav-item:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.torpay-nav-item.active {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.torpay-nav-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.9;
+}
+
+.torpay-nav-logout {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.torpay-nav-logout .torpay-nav-item {
+  color: rgba(255,255,255,0.7);
+}
+
+.torpay-nav-logout .torpay-nav-item:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+}
+
+/* Main Content */
+.torpay-main {
+  margin-left: 260px;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+.torpay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--torpay-gray-200);
+}
+
+body.torpay-merchant.dark-mode .torpay-header {
+  border-bottom-color: var(--torpay-gray-700);
+}
+
+.torpay-page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--torpay-gray-900);
+  margin: 0;
+}
+
+body.torpay-merchant.dark-mode .torpay-page-title {
+  color: var(--torpay-gray-100);
+}
+
+/* Cards */
+.torpay-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--torpay-shadow);
+  border: 1px solid var(--torpay-gray-100);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.torpay-card:hover {
+  box-shadow: var(--torpay-shadow-lg);
+}
+
+body.torpay-merchant.dark-mode .torpay-card {
+  background: var(--torpay-gray-800);
+  border-color: var(--torpay-gray-700);
+}
+
+.torpay-card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--torpay-gray-100);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+body.torpay-merchant.dark-mode .torpay-card-header {
+  border-bottom-color: var(--torpay-gray-700);
+}
+
+.torpay-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--torpay-gray-800);
+  margin: 0;
+}
+
+body.torpay-merchant.dark-mode .torpay-card-title {
+  color: var(--torpay-gray-100);
+}
+
+.torpay-card-body {
+  padding: 1.5rem;
+}
+
+/* Stat Cards */
+.torpay-stat-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--torpay-shadow);
+  border: 1px solid var(--torpay-gray-100);
+  position: relative;
+  overflow: hidden;
+}
+
+body.torpay-merchant.dark-mode .torpay-stat-card {
+  background: var(--torpay-gray-800);
+  border-color: var(--torpay-gray-700);
+}
+
+.torpay-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--torpay-gradient);
+}
+
+.torpay-stat-card.success::before {
+  background: var(--torpay-success);
+}
+
+.torpay-stat-card.warning::before {
+  background: var(--torpay-warning);
+}
+
+.torpay-stat-card.danger::before {
+  background: var(--torpay-danger);
+}
+
+.torpay-stat-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--torpay-gray-500);
+  margin-bottom: 0.5rem;
+}
+
+.torpay-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--torpay-gray-900);
+  line-height: 1.2;
+}
+
+body.torpay-merchant.dark-mode .torpay-stat-value {
+  color: var(--torpay-gray-100);
+}
+
+.torpay-stat-value.success {
+  color: var(--torpay-success);
+}
+
+.torpay-stat-meta {
+  font-size: 0.75rem;
+  color: var(--torpay-gray-400);
+  margin-top: 0.5rem;
+}
+
+/* Tables */
+.torpay-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.torpay-table th {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--torpay-gray-500);
+  border-bottom: 1px solid var(--torpay-gray-200);
+  background: var(--torpay-gray-50);
+}
+
+body.torpay-merchant.dark-mode .torpay-table th {
+  background: var(--torpay-gray-700);
+  color: var(--torpay-gray-400);
+  border-bottom-color: var(--torpay-gray-600);
+}
+
+.torpay-table td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--torpay-gray-100);
+  font-size: 0.875rem;
+}
+
+body.torpay-merchant.dark-mode .torpay-table td {
+  border-bottom-color: var(--torpay-gray-700);
+}
+
+.torpay-table tbody tr:hover {
+  background: var(--torpay-gray-50);
+}
+
+body.torpay-merchant.dark-mode .torpay-table tbody tr:hover {
+  background: var(--torpay-gray-700);
+}
+
+.torpay-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badges */
+.torpay-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.torpay-badge.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--torpay-success);
+}
+
+.torpay-badge.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--torpay-warning);
+}
+
+.torpay-badge.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--torpay-danger);
+}
+
+.torpay-badge.info {
+  background: rgba(6, 182, 212, 0.1);
+  color: var(--torpay-accent);
+}
+
+.torpay-badge.secondary {
+  background: var(--torpay-gray-100);
+  color: var(--torpay-gray-600);
+}
+
+body.torpay-merchant.dark-mode .torpay-badge.secondary {
+  background: var(--torpay-gray-600);
+  color: var(--torpay-gray-300);
+}
+
+/* Buttons */
+.torpay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.torpay-btn-primary {
+  background: var(--torpay-gradient);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.25);
+}
+
+.torpay-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  color: #fff;
+}
+
+.torpay-btn-secondary {
+  background: var(--torpay-gray-100);
+  color: var(--torpay-gray-700);
+}
+
+body.torpay-merchant.dark-mode .torpay-btn-secondary {
+  background: var(--torpay-gray-700);
+  color: var(--torpay-gray-200);
+}
+
+.torpay-btn-secondary:hover {
+  background: var(--torpay-gray-200);
+  color: var(--torpay-gray-800);
+}
+
+.torpay-btn-outline {
+  background: transparent;
+  border: 2px solid var(--torpay-primary);
+  color: var(--torpay-primary);
+}
+
+.torpay-btn-outline:hover {
+  background: var(--torpay-primary);
+  color: #fff;
+}
+
+.torpay-btn-danger {
+  background: var(--torpay-danger);
+  color: #fff;
+}
+
+.torpay-btn-danger:hover {
+  background: #dc2626;
+}
+
+.torpay-btn-sm {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+}
+
+/* Forms */
+.torpay-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.torpay-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--torpay-gray-700);
+  margin-bottom: 0.5rem;
+}
+
+body.torpay-merchant.dark-mode .torpay-form-label {
+  color: var(--torpay-gray-300);
+}
+
+.torpay-form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border: 2px solid var(--torpay-gray-200);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--torpay-gray-800);
+  transition: all 0.2s ease;
+}
+
+body.torpay-merchant.dark-mode .torpay-form-input {
+  background: var(--torpay-gray-700);
+  border-color: var(--torpay-gray-600);
+  color: var(--torpay-gray-100);
+}
+
+.torpay-form-input:focus {
+  outline: none;
+  border-color: var(--torpay-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.torpay-form-input::placeholder {
+  color: var(--torpay-gray-400);
+}
+
+/* Code blocks */
+.torpay-code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  background: var(--torpay-gray-100);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  color: var(--torpay-primary);
+}
+
+body.torpay-merchant.dark-mode .torpay-code {
+  background: var(--torpay-gray-700);
+  color: var(--torpay-primary-light);
+}
+
+.torpay-code-block {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  background: var(--torpay-gray-900);
+  color: var(--torpay-gray-100);
+  padding: 1.25rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+/* Alerts */
+.torpay-alert {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.torpay-alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--torpay-success);
+}
+
+.torpay-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: var(--torpay-warning);
+}
+
+.torpay-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--torpay-danger);
+}
+
+.torpay-alert-info {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--torpay-primary);
+}
+
+/* Empty States */
+.torpay-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--torpay-gray-400);
+}
+
+.torpay-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+}
+
+.torpay-empty-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--torpay-gray-600);
+  margin-bottom: 0.5rem;
+}
+
+body.torpay-merchant.dark-mode .torpay-empty-title {
+  color: var(--torpay-gray-400);
+}
+
+/* Auth Pages (Login/Register) */
+.torpay-auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--torpay-gradient);
+  padding: 2rem;
+}
+
+.torpay-auth-card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: var(--torpay-shadow-xl);
+  padding: 3rem;
+  width: 100%;
+  max-width: 440px;
+}
+
+body.torpay-merchant.dark-mode .torpay-auth-card {
+  background: var(--torpay-gray-800);
+}
+
+.torpay-auth-logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.torpay-auth-logo-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--torpay-gradient);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 1.75rem;
+}
+
+.torpay-auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--torpay-gray-900);
+  margin-bottom: 0.5rem;
+}
+
+body.torpay-merchant.dark-mode .torpay-auth-title {
+  color: var(--torpay-gray-100);
+}
+
+.torpay-auth-subtitle {
+  color: var(--torpay-gray-500);
+  font-size: 0.875rem;
+}
+
+.torpay-auth-form {
+  margin-top: 2rem;
+}
+
+.torpay-auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--torpay-gray-200);
+  font-size: 0.875rem;
+  color: var(--torpay-gray-500);
+}
+
+body.torpay-merchant.dark-mode .torpay-auth-footer {
+  border-top-color: var(--torpay-gray-600);
+}
+
+.torpay-auth-footer a {
+  color: var(--torpay-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.torpay-auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Grid helpers */
+.torpay-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.torpay-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.torpay-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.torpay-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1200px) {
+  .torpay-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .torpay-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .torpay-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .torpay-sidebar.show {
+    transform: translateX(0);
+  }
+
+  .torpay-main {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .torpay-grid-2,
+  .torpay-grid-3,
+  .torpay-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .torpay-main {
+    padding: 1rem;
+  }
+
+  .torpay-auth-card {
+    padding: 2rem;
+  }
+}
+
+/* Animations */
+@keyframes torpay-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.torpay-animate {
+  animation: torpay-fade-in 0.3s ease forwards;
+}
+
+/* Copy button animation */
+.torpay-copy-btn {
+  position: relative;
+}
+
+.torpay-copy-btn.copied::after {
+  content: 'Copied!';
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--torpay-success);
+  color: #fff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  animation: torpay-fade-in 0.2s ease;
+}
+
+/* Scrollbar */
+.torpay-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.torpay-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.torpay-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+}
+
+.torpay-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.3);
+}

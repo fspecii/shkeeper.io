@@ -1,104 +1,156 @@
 {% extends 'merchant/base.j2' %}
 
 {% block title %}API Keys{% endblock %}
+{% block page_title %}API Keys{% endblock %}
 
 {% block content %}
-<div class="row">
-  <div class="col-12">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">API Authentication</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Use these credentials to authenticate API requests to create invoices and receive payment notifications.</p>
-
-        <div class="mb-4">
-          <label class="form-label"><strong>API Key</strong></label>
-          <div class="input-group">
-            <input type="text" class="form-control font-monospace" value="{{ merchant.api_key }}" id="api-key" readonly>
-            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('api-key')">Copy</button>
-          </div>
-          <small class="text-muted">Include this in the <code>X-Shkeeper-Api-Key</code> header for all API requests.</small>
-        </div>
-
-        <div class="mb-4">
-          <label class="form-label"><strong>Webhook Secret</strong></label>
-          <div class="input-group">
-            <input type="text" class="form-control font-monospace" value="{{ merchant.webhook_secret }}" id="webhook-secret" readonly>
-            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('webhook-secret')">Copy</button>
-          </div>
-          <small class="text-muted">Use this to verify webhook signatures from our server.</small>
-        </div>
+<div class="torpay-grid torpay-grid-2" style="margin-bottom: 2rem;">
+  <!-- API Key Card -->
+  <div class="torpay-card torpay-animate" style="animation-delay: 0.1s;">
+    <div class="torpay-card-header">
+      <h2 class="torpay-card-title">API Key</h2>
+    </div>
+    <div class="torpay-card-body">
+      <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
+        Include this in the <span class="torpay-code">X-Shkeeper-Api-Key</span> header for all API requests.
+      </p>
+      <div style="display: flex; gap: 0.5rem;">
+        <input
+          type="text"
+          id="api-key"
+          class="torpay-form-input"
+          value="{{ merchant.api_key }}"
+          readonly
+          style="font-family: monospace; flex: 1;"
+        >
+        <button type="button" class="torpay-btn torpay-btn-secondary torpay-copy-btn" onclick="copyToClipboard('api-key', this)">
+          Copy
+        </button>
       </div>
     </div>
+  </div>
 
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Regenerate Keys</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-danger">Warning: Regenerating keys will invalidate your current keys. Update your integration immediately after regenerating.</p>
-
-        <div class="d-flex gap-3">
-          <form method="post" action="{{ url_for('merchant_auth.regenerate_api_key') }}" onsubmit="return confirm('Are you sure you want to regenerate your API key? This will invalidate your current key.');">
-            <button type="submit" class="btn btn-warning">Regenerate API Key</button>
-          </form>
-
-          <form method="post" action="{{ url_for('merchant_auth.regenerate_webhook_secret') }}" onsubmit="return confirm('Are you sure you want to regenerate your webhook secret?');">
-            <button type="submit" class="btn btn-warning">Regenerate Webhook Secret</button>
-          </form>
-        </div>
+  <!-- Webhook Secret Card -->
+  <div class="torpay-card torpay-animate" style="animation-delay: 0.2s;">
+    <div class="torpay-card-header">
+      <h2 class="torpay-card-title">Webhook Secret</h2>
+    </div>
+    <div class="torpay-card-body">
+      <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
+        Use this secret to verify webhook signatures from our server.
+      </p>
+      <div style="display: flex; gap: 0.5rem;">
+        <input
+          type="text"
+          id="webhook-secret"
+          class="torpay-form-input"
+          value="{{ merchant.webhook_secret }}"
+          readonly
+          style="font-family: monospace; flex: 1;"
+        >
+        <button type="button" class="torpay-btn torpay-btn-secondary torpay-copy-btn" onclick="copyToClipboard('webhook-secret', this)">
+          Copy
+        </button>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">API Documentation</h5>
-      </div>
-      <div class="card-body">
-        <h6>Create Invoice</h6>
-        <pre class="bg-dark text-light p-3 rounded"><code>curl -X POST https://your-domain.com/api/v1/BTC/payment_request \
-  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+<!-- Regenerate Keys -->
+<div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.3s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Regenerate Keys</h2>
+  </div>
+  <div class="torpay-card-body">
+    <div class="torpay-alert torpay-alert-warning" style="margin-bottom: 1.5rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>Regenerating keys will invalidate your current keys. Update your integration immediately after regenerating.</span>
+    </div>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <form method="post" action="{{ url_for('merchant_auth.regenerate_api_key') }}" onsubmit="return confirm('Are you sure you want to regenerate your API key? This will invalidate your current key.');">
+        <button type="submit" class="torpay-btn torpay-btn-danger">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Regenerate API Key
+        </button>
+      </form>
+
+      <form method="post" action="{{ url_for('merchant_auth.regenerate_webhook_secret') }}" onsubmit="return confirm('Are you sure you want to regenerate your webhook secret?');">
+        <button type="submit" class="torpay-btn torpay-btn-danger">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Regenerate Webhook Secret
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Start Guide -->
+<div class="torpay-card torpay-animate" style="animation-delay: 0.4s;">
+  <div class="torpay-card-header">
+    <h2 class="torpay-card-title">Quick Start</h2>
+    <a href="{{ url_for('merchant_auth.docs') }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">Full Documentation</a>
+  </div>
+  <div class="torpay-card-body">
+    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--torpay-gray-700);">Create Invoice</h3>
+    <div class="torpay-code-block" style="margin-bottom: 1.5rem;">
+<pre style="margin: 0; color: #e2e8f0;">curl -X POST https://api.torpay.me/api/v1/BTC/payment_request \
+  -H "X-Shkeeper-Api-Key: <span style="color: #a78bfa;">{{ merchant.api_key }}</span>" \
   -H "Content-Type: application/json" \
   -d '{
     "external_id": "order_123",
     "fiat": "USD",
     "amount": 99.99,
     "callback_url": "https://your-site.com/webhook"
-  }'</code></pre>
+  }'</pre>
+    </div>
 
-        <h6 class="mt-4">Response</h6>
-        <pre class="bg-dark text-light p-3 rounded"><code>{
+    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--torpay-gray-700);">Response</h3>
+    <div class="torpay-code-block" style="margin-bottom: 1.5rem;">
+<pre style="margin: 0; color: #e2e8f0;">{
   "status": "success",
   "id": 456,
   "wallet": "bc1q...",
   "amount": "0.00234",
   "exchange_rate": "42735.00"
-}</code></pre>
+}</pre>
+    </div>
 
-        <h6 class="mt-4">Webhook Notification</h6>
-        <pre class="bg-dark text-light p-3 rounded"><code>{
+    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--torpay-gray-700);">Webhook Notification</h3>
+    <div class="torpay-code-block">
+<pre style="margin: 0; color: #e2e8f0;">{
   "external_id": "order_123",
   "status": "PAID",
   "balance_fiat": "99.99",
   "commission_amount": "2.00",
   "commission_percent": "2.0",
   "net_amount": "97.99",
-  "crypto": "BTC",
-  "transactions": [...]
-}</code></pre>
-      </div>
+  "crypto": "BTC"
+}</pre>
     </div>
   </div>
 </div>
 
 <script>
-function copyToClipboard(elementId) {
+function copyToClipboard(elementId, button) {
   var copyText = document.getElementById(elementId);
   copyText.select();
   copyText.setSelectionRange(0, 99999);
   navigator.clipboard.writeText(copyText.value);
-  alert('Copied to clipboard!');
+  button.classList.add('copied');
+  setTimeout(function() {
+    button.classList.remove('copied');
+  }, 2000);
 }
 </script>
 {% endblock %}

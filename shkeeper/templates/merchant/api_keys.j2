@@ -14,15 +14,16 @@
       <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
         Include this in the <span class="torpay-code">X-Shkeeper-Api-Key</span> header for all API requests.
       </p>
-      <div style="display: flex; gap: 0.5rem;">
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
         <input
-          type="text"
+          type="password"
           id="api-key"
           class="torpay-form-input"
           value="{{ merchant.api_key }}"
           readonly
           style="font-family: monospace; flex: 1;"
         >
+        <button type="button" class="torpay-btn torpay-btn-secondary torpay-btn-sm" onclick="toggleSecret('api-key', this)">Show</button>
         <button type="button" class="torpay-btn torpay-btn-secondary torpay-copy-btn" onclick="copyToClipboard('api-key', this)">
           Copy
         </button>
@@ -39,15 +40,16 @@
       <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
         Use this secret to verify webhook signatures from our server.
       </p>
-      <div style="display: flex; gap: 0.5rem;">
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
         <input
-          type="text"
+          type="password"
           id="webhook-secret"
           class="torpay-form-input"
           value="{{ merchant.webhook_secret }}"
           readonly
           style="font-family: monospace; flex: 1;"
         >
+        <button type="button" class="torpay-btn torpay-btn-secondary torpay-btn-sm" onclick="toggleSecret('webhook-secret', this)">Show</button>
         <button type="button" class="torpay-btn torpay-btn-secondary torpay-copy-btn" onclick="copyToClipboard('webhook-secret', this)">
           Copy
         </button>
@@ -151,6 +153,12 @@ function copyToClipboard(elementId, button) {
   setTimeout(function() {
     button.classList.remove('copied');
   }, 2000);
+}
+function toggleSecret(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? 'Show' : 'Hide';
 }
 </script>
 {% endblock %}

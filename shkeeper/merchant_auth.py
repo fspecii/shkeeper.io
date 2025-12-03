@@ -92,8 +92,6 @@ def register():
             session["merchant_credentials"] = {
                 "login_id": login_id,
                 "login_secret": login_secret,
-                "api_key": merchant.api_key,
-                "webhook_secret": merchant.webhook_secret,
                 "message": "Save these credentials now. They will not be shown again.",
             }
 
@@ -368,8 +366,6 @@ def rotate_secret():
     session["merchant_credentials"] = {
         "login_id": merchant.login_id,
         "login_secret": new_secret,
-        "api_key": merchant.api_key,
-        "webhook_secret": merchant.webhook_secret,
         "message": "Login secret rotated. Store the new secret safely.",
     }
     flash("Login secret rotated.")

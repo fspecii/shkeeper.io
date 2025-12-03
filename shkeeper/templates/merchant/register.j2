@@ -37,16 +37,20 @@
       <form class="torpay-auth-form" method="post">
         <div class="torpay-form-group">
           <label class="torpay-form-label" for="security_phrase">Security Phrase</label>
-          <input
-            type="password"
-            id="security_phrase"
-            name="security_phrase"
-            class="torpay-form-input"
-            placeholder="Min. 8 characters"
-            minlength="8"
-            required
-            autofocus
-          >
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input
+              type="password"
+              id="security_phrase"
+              name="security_phrase"
+              class="torpay-form-input"
+              placeholder="Min. 8 characters"
+              minlength="8"
+              required
+              autofocus
+              style="flex: 1;"
+            >
+            <button type="button" class="torpay-btn torpay-btn-secondary torpay-btn-sm" onclick="togglePhrase('security_phrase', this)">Show</button>
+          </div>
           <p style="color: var(--torpay-gray-500); font-size: 0.85rem; margin-top: 0.5rem;">
             Required to rotate your login secret or request payouts.
           </p>
@@ -54,15 +58,19 @@
 
         <div class="torpay-form-group">
           <label class="torpay-form-label" for="security_phrase_confirm">Confirm Security Phrase</label>
-          <input
-            type="password"
-            id="security_phrase_confirm"
-            name="security_phrase_confirm"
-            class="torpay-form-input"
-            placeholder="Re-enter your security phrase"
-            minlength="8"
-            required
-          >
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input
+              type="password"
+              id="security_phrase_confirm"
+              name="security_phrase_confirm"
+              class="torpay-form-input"
+              placeholder="Re-enter your security phrase"
+              minlength="8"
+              required
+              style="flex: 1;"
+            >
+            <button type="button" class="torpay-btn torpay-btn-secondary torpay-btn-sm" onclick="togglePhrase('security_phrase_confirm', this)">Show</button>
+          </div>
         </div>
 
         <button type="submit" class="torpay-btn torpay-btn-primary torpay-btn-lg" style="width: 100%;">
@@ -70,10 +78,18 @@
         </button>
       </form>
 
-      <div class="torpay-auth-footer">
-        Already have an account? <a href="{{ url_for('merchant_auth.login') }}">Sign in</a>
-      </div>
+    <div class="torpay-auth-footer">
+      Already have an account? <a href="{{ url_for('merchant_auth.login') }}">Sign in</a>
     </div>
   </div>
+</div>
+<script>
+  function togglePhrase(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? 'Show' : 'Hide';
+  }
+</script>
 </body>
 </html>

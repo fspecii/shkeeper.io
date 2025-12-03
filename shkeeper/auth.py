@@ -93,10 +93,12 @@ def api_key_required(view):
     """
     @functools.wraps(view)
     def wrapped_view(**kwargs):
-        if "X-Shkeeper-Api-Key" not in request.headers:
+        apikey = (
+            request.headers.get("X-Torpay-Api-Key")
+            or request.headers.get("X-Shkeeper-Api-Key")
+        )
+        if not apikey:
             return {"status": "error", "message": "No API key"}, 401
-
-        apikey = request.headers["X-Shkeeper-Api-Key"]
 
         # First, try to authenticate as a Merchant (multi-tenant mode)
         merchant = Merchant.query.filter_by(api_key=apikey).first()

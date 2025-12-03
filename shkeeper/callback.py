@@ -166,7 +166,10 @@ def send_unconfirmed_notification(utx: UnconfirmedTransaction):
     }
 
     # Build headers with backward-compatible API key + new signature for merchants
-    headers = {"X-Shkeeper-Api-Key": apikey}
+    headers = {
+        "X-Torpay-Api-Key": apikey,
+        "X-Shkeeper-Api-Key": apikey,  # backward compatibility
+    }
     if invoice.merchant_id:
         merchant = Merchant.query.get(invoice.merchant_id)
         if merchant and merchant.webhook_secret:

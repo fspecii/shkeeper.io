@@ -12,7 +12,8 @@
     </div>
     <div class="torpay-card-body">
       <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
-        Include this in the <span class="torpay-code">X-Shkeeper-Api-Key</span> header for all API requests.
+        Include this in the <span class="torpay-code">X-Torpay-Api-Key</span> header for API requests.
+        For anonymous flows, rely on client callbacks (no inbound webhooks) and keep this key private.
       </p>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
         <input
@@ -38,7 +39,7 @@
     </div>
     <div class="torpay-card-body">
       <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
-        Use this secret to verify webhook signatures from our server.
+        Use this secret only if you enable webhooks. For maximum anonymity, skip inbound webhooks and use client callbacks instead.
       </p>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
         <input

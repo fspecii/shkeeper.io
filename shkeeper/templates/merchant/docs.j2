@@ -57,14 +57,14 @@
       <div class="card">
         <div class="card-header">HTTP Header</div>
         <div class="card-body">
-          <pre class="bg-dark text-light p-3 rounded"><code>X-Shkeeper-Api-Key: {{ merchant.api_key }}</code></pre>
+          <pre class="bg-dark text-light p-3 rounded"><code>X-Torpay-Api-Key: {{ merchant.api_key }}</code></pre>
         </div>
       </div>
 
       <h5 class="mt-4">Example Request (cURL)</h5>
       <pre class="bg-dark text-light p-3 rounded"><code>curl -X POST "{{ base_url }}/api/v1/BTC/payment_request" \
   -H "Content-Type: application/json" \
-  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+  -H "X-Torpay-Api-Key: {{ merchant.api_key }}" \
   -d '{"amount": 99.99, "fiat": "USD", "external_id": "order-123"}'</code></pre>
     </section>
 
@@ -275,49 +275,33 @@ function payWithCrypto() {
       </div>
     </section>
 
-    <!-- Webhooks -->
+    <!-- Anonymous Confirmation -->
     <section id="webhooks" class="mb-5">
-      <h2>Webhooks (Callbacks)</h2>
-      <p>Receive real-time notifications when payments are received.</p>
+      <h2>Anonymous Confirmation (No Inbound Webhooks)</h2>
+      <p>Confirm payments without exposing an inbound endpoint. Use client callbacks and optional server polling.</p>
 
-      <h5>Setting Up Webhooks</h5>
-      <ol>
-        <li>Configure your default callback URL in <a href="{{ url_for('merchant_auth.settings') }}">Settings</a></li>
-        <li>Or specify a callback URL per invoice when creating it</li>
-      </ol>
+      <h5>Client Callback (Recommended)</h5>
+      <pre class="bg-dark text-light p-3 rounded"><code>TorPay.openPaymentModal({
+  amount: 99.99,
+  currency: 'USD',
+  crypto: 'BTC',
+  orderId: 'order-' + Date.now(),
+  onPaymentComplete: function(invoice) {
+    // Notify your own backend (same-origin) to unlock the order
+    fetch('/mark-paid', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ orderId: invoice.external_id || invoice.id })
+    });
+  }
+});</code></pre>
 
-      <h5 class="mt-4">Webhook Payload</h5>
-      <p>When a payment is received, we'll POST the following JSON to your callback URL:</p>
-      <pre class="bg-light p-3 rounded"><code>{
-  "external_id": "order-123",
-  "crypto": "BTC",
-  "addr": "bc1q...",
-  "txid": "abc123...",
-  "amount": "0.00234500",
-  "confirmations": 1,
-  "status": "paid",
+      <h5 class="mt-3">Optional: Server Poll</h5>
+      <p>Your backend can poll <code>/api/v1/invoice/{id}/status</code> with your API key to double-check status without exposing any inbound endpoint.</p>
 
-  // Commission info (after platform fee)
-  "fiat_amount": 99.99,
-  "commission_amount": 2.00,
-  "net_amount": 97.99
-}</code></pre>
-
-      <h5 class="mt-4">Webhook Security</h5>
-      <p>We recommend verifying webhook requests:</p>
-      <ul>
-        <li>Check the source IP matches our servers</li>
-        <li>Verify the transaction exists by calling our API</li>
-        <li>Store and check webhook IDs to prevent replay attacks</li>
-      </ul>
-
-      <h5 class="mt-4">Responding to Webhooks</h5>
-      <p>Your endpoint should:</p>
-      <ul>
-        <li>Return HTTP 200 status code to acknowledge receipt</li>
-        <li>Process quickly (< 5 seconds) - do heavy work asynchronously</li>
-        <li>Be idempotent - we may retry failed webhooks</li>
-      </ul>
+      <div class="alert alert-info mt-3">
+        Prefer this flow for anonymity. Only enable webhooks if you need server-to-server pushes.
+      </div>
     </section>
 
     <!-- Testing -->
@@ -340,7 +324,7 @@ function payWithCrypto() {
           <pre class="bg-dark text-light p-3 rounded"><code># Create a test invoice
 curl -X POST "{{ base_url }}/api/v1/BTC/payment_request" \
   -H "Content-Type: application/json" \
-  -H "X-Shkeeper-Api-Key: {{ merchant.api_key }}" \
+  -H "X-Torpay-Api-Key: {{ merchant.api_key }}" \
   -d '{
     "amount": 1.00,
     "fiat": "USD",
@@ -385,7 +369,7 @@ def create_invoice(amount, currency="USD", crypto="BTC", order_id=None):
         f"{BASE_URL}/api/v1/{crypto}/payment_request",
         headers={
             "Content-Type": "application/json",
-            "X-Shkeeper-Api-Key": API_KEY
+            "X-Torpay-Api-Key": API_KEY
         },
         json={
             "amount": amount,
@@ -398,7 +382,7 @@ def create_invoice(amount, currency="USD", crypto="BTC", order_id=None):
 def get_invoice(invoice_id):
     response = requests.get(
         f"{BASE_URL}/api/v1/invoices/{invoice_id}",
-        headers={"X-Shkeeper-Api-Key": API_KEY}
+        headers={"X-Torpay-Api-Key": API_KEY}
     )
     return response.json()
 
@@ -425,7 +409,7 @@ async function createInvoice(amount, currency = 'USD', crypto = 'BTC', orderId =
     {
       headers: {
         'Content-Type': 'application/json',
-        'X-Shkeeper-Api-Key': API_KEY
+        'X-Torpay-Api-Key': API_KEY
       }
     }
   );
@@ -435,7 +419,7 @@ async function createInvoice(amount, currency = 'USD', crypto = 'BTC', orderId =
 async function getInvoice(invoiceId) {
   const response = await axios.get(
     `${BASE_URL}/api/v1/invoices/${invoiceId}`,
-    { headers: { 'X-Shkeeper-Api-Key': API_KEY } }
+    { headers: { 'X-Torpay-Api-Key': API_KEY } }
   );
   return response.data;
 }
@@ -460,7 +444,7 @@ function createInvoice($amount, $currency = 'USD', $crypto = 'BTC', $orderId = n
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        "X-Shkeeper-Api-Key: $API_KEY"
+        "X-Torpay-Api-Key: $API_KEY"
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
         'amount' => $amount,
@@ -480,7 +464,7 @@ function getInvoice($invoiceId) {
     $ch = curl_init("$BASE_URL/api/v1/invoices/$invoiceId");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "X-Shkeeper-Api-Key: $API_KEY"
+        "X-Torpay-Api-Key: $API_KEY"
     ]);
 
     $response = curl_exec($ch);

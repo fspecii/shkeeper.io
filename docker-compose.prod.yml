@@ -19,12 +19,14 @@ services:
       - BTC_WALLET=enabled
       - USDT_WALLET=enabled
 
+      # TRX required for USDT (network fees)
+      - TRX_WALLET=enabled
+
       # Disabled wallets
       - LTC_WALLET=disabled
       - DOGE_WALLET=disabled
       - FIRO_WALLET=disabled
       - FIRO_SPARK_WALLET=disabled
-      - TRX_WALLET=disabled
       - USDC_WALLET=disabled
       - ETH_WALLET=disabled
       - ETH_USDT_WALLET=disabled

@@ -21,13 +21,14 @@ services:
 
       # TRX required for USDT (network fees)
       - TRX_WALLET=enabled
+      # USDC required for tron-shkeeper initialization
+      - USDC_WALLET=enabled
 
       # Disabled wallets
       - LTC_WALLET=disabled
       - DOGE_WALLET=disabled
       - FIRO_WALLET=disabled
       - FIRO_SPARK_WALLET=disabled
-      - USDC_WALLET=disabled
       - ETH_WALLET=disabled
       - ETH_USDT_WALLET=disabled
       - ETH_USDC_WALLET=disabled

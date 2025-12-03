@@ -162,6 +162,10 @@ def create_app(test_config=None):
 
         db.create_all()
 
+        # Run automatic schema upgrades for new columns/tables
+        from .db_upgrade import run_migrations
+        run_migrations(db, app)
+
         # Create default user
         default_user = "admin"
         if not User.query.filter_by(username=default_user).first():

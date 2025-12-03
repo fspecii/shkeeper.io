@@ -223,8 +223,7 @@ class CommissionRecord(db.Model):
 
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
-    # Relationships
-    merchant = db.relationship("Merchant", backref="commission_records")
+    # Note: merchant relationship is defined in Merchant model with backref="merchant"
 
     def to_json(self):
         """Convert commission record to JSON-safe dict."""

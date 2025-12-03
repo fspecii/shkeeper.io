@@ -80,6 +80,28 @@ services:
     restart: unless-stopped
 
   # =============================================================================
+  # Database initialization (creates required databases)
+  # =============================================================================
+  db-init:
+    image: mariadb:10.11
+    depends_on:
+      - mariadb
+    environment:
+      - MYSQL_PWD=shkeeper
+    command: >
+      bash -c "
+        echo 'Waiting for MariaDB to be ready...'
+        sleep 15
+        echo 'Creating databases...'
+        mysql -h mariadb -u root -e 'CREATE DATABASE IF NOT EXISTS \`bitcoin-shkeeper\`;'
+        mysql -h mariadb -u root -e 'CREATE DATABASE IF NOT EXISTS shkeeper;'
+        echo 'Databases created successfully!'
+      "
+    networks:
+      - default
+    restart: "no"
+
+  # =============================================================================
   # Bitcoin Shkeeper API (connects to hosted fullnode)
   # =============================================================================
   bitcoin-shkeeper:
@@ -97,8 +119,10 @@ services:
       - bitcoin_shkeeper_data:/root/.bitcoin
     depends_on:
       - redis
+      - mariadb
+      - db-init
     command: >
-      bash -c "sleep 10 && gunicorn
+      bash -c "sleep 30 && gunicorn
       --access-logfile=-
       --workers=1
       --threads=16
@@ -125,9 +149,11 @@ services:
       - bitcoin_shkeeper_data:/root/.bitcoin
     depends_on:
       - redis
+      - mariadb
+      - db-init
       - bitcoin-shkeeper
     command: >
-      bash -c "sleep 15 && celery -A celery_worker.celery worker --loglevel=info -B"
+      bash -c "sleep 40 && celery -A celery_worker.celery worker --loglevel=info -B"
     networks:
       - default
     restart: unless-stopped
@@ -151,6 +177,7 @@ services:
     depends_on:
       - mariadb
       - redis
+      - db-init
     command: >
       bash -c "sleep 30 && gunicorn
       --access-logfile=-
@@ -180,9 +207,10 @@ services:
     depends_on:
       - mariadb
       - redis
+      - db-init
       - tron-shkeeper
     command: >
-      bash -c "sleep 35 && celery -A celery_worker.celery worker --loglevel=info -B --schedule=/app/data/celerybeat-schedule"
+      bash -c "sleep 40 && celery -A celery_worker.celery worker --loglevel=info -B --schedule=/app/data/celerybeat-schedule"
     networks:
       - default
     restart: unless-stopped
@@ -191,7 +219,7 @@ services:
   # Supporting Services
   # =============================================================================
 
-  # MariaDB for Tron/USDT state
+  # MariaDB for all crypto backends
   mariadb:
     image: mariadb:10.11
     hostname: mariadb

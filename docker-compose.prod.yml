@@ -1,0 +1,191 @@
+version: "3.8"
+
+# TorPay Production Stack - BTC + USDT (TRC20)
+# Deploys to api.torpay.me
+
+services:
+  # =============================================================================
+  # TorPay Frontend (Custom SHKeeper)
+  # =============================================================================
+  shkeeper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shkeeper
+    hostname: shkeeper
+    ports:
+      - "5000:5000"
+    environment:
+      # Enabled wallets
+      - BTC_WALLET=enabled
+      - USDT_WALLET=enabled
+
+      # Disabled wallets
+      - LTC_WALLET=disabled
+      - DOGE_WALLET=disabled
+      - FIRO_WALLET=disabled
+      - FIRO_SPARK_WALLET=disabled
+      - TRX_WALLET=disabled
+      - USDC_WALLET=disabled
+      - ETH_WALLET=disabled
+      - ETH_USDT_WALLET=disabled
+      - ETH_USDC_WALLET=disabled
+      - ETH_PYUSD_WALLET=disabled
+      - MONERO_WALLET=disabled
+      - BNB_WALLET=disabled
+      - BNB_USDT_WALLET=disabled
+      - BNB_USDC_WALLET=disabled
+      - XRP_WALLET=disabled
+      - MATIC_WALLET=disabled
+      - POLYGON_USDT_WALLET=disabled
+      - POLYGON_USDC_WALLET=disabled
+      - AVAX_WALLET=disabled
+      - AVALANCHE_USDT_WALLET=disabled
+      - AVALANCHE_USDC_WALLET=disabled
+      - SOL_WALLET=disabled
+      - SOLANA_USDT_WALLET=disabled
+      - SOLANA_USDC_WALLET=disabled
+      - SOLANA_PYUSD_WALLET=disabled
+      - BITCOINLIGHTNING_WALLET=disabled
+
+      # BTC credentials
+      - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
+      - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
+
+      # USDT (TRC20) credentials
+      - USDT_USERNAME=${USDT_USERNAME:-shkeeper}
+      - USDT_PASSWORD=${USDT_PASSWORD:-shkeeper}
+
+      # Tron API server
+      - TRON_API_SERVER_HOST=tron-shkeeper
+      - TRON_API_SERVER_PORT=6000
+
+      # Backend key for crypto services
+      - SHKEEPER_BTC_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
+
+      # Production mode
+      - DEV_MODE=false
+
+    volumes:
+      - shkeeper_data:/shkeeper.io/instance
+    depends_on:
+      - bitcoin-shkeeper
+      - tron-shkeeper
+      - mariadb
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Bitcoin Shkeeper API (connects to hosted fullnode)
+  # =============================================================================
+  bitcoin-shkeeper:
+    image: vsyshost/bitcoin-shkeeper:1.0.5
+    container_name: bitcoin-shkeeper
+    hostname: bitcoin-shkeeper
+    environment:
+      - BITCOIN_RPC_HOST=fullnode.bitcoin.shkeeper.io
+      - BITCOIN_RPC_PORT=8332
+      - BITCOIN_RPC_USER=${BTC_USERNAME:-shkeeper}
+      - BITCOIN_RPC_PASSWORD=${BTC_PASSWORD:-shkeeper}
+      - BITCOIN_NETWORK=mainnet
+      - SHKEEPER_HOST=shkeeper:5000
+      - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
+      - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
+      - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
+    volumes:
+      - bitcoin_shkeeper_data:/app/data
+    depends_on:
+      - mariadb
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Tron Shkeeper API (for USDT TRC20)
+  # =============================================================================
+  tron-shkeeper:
+    image: vsyshost/tron-shkeeper:1.1.10
+    container_name: tron-shkeeper
+    hostname: tron-shkeeper
+    command: ["gunicorn", "--access-logfile=-", "--workers=1", "--threads=64", "--timeout=600", "--bind=0.0.0.0:6000", "run:server"]
+    environment:
+      - BTC_USERNAME=${USDT_USERNAME:-shkeeper}
+      - BTC_PASSWORD=${USDT_PASSWORD:-shkeeper}
+      - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
+      - SHKEEPER_HOST=shkeeper:5000
+      - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
+      - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
+    volumes:
+      - tron_shkeeper_data:/app/data
+    depends_on:
+      - mariadb
+      - redis
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+  # Tron Celery worker for background tasks
+  tron-tasks:
+    image: vsyshost/tron-shkeeper:1.1.10
+    container_name: tron-tasks
+    command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "-B", "--schedule=/app/data/celerybeat-schedule"]
+    environment:
+      - BTC_USERNAME=${USDT_USERNAME:-shkeeper}
+      - BTC_PASSWORD=${USDT_PASSWORD:-shkeeper}
+      - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
+      - SHKEEPER_HOST=shkeeper:5000
+      - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
+      - C_FORCE_ROOT=1
+      - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
+    volumes:
+      - tron_shkeeper_data:/app/data
+    depends_on:
+      - mariadb
+      - redis
+      - tron-shkeeper
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Supporting Services
+  # =============================================================================
+
+  # MariaDB for Tron/USDT state
+  mariadb:
+    image: mariadb:10.11
+    container_name: torpay-mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=shkeeper
+      - MYSQL_DATABASE=shkeeper
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+  # Redis for Celery task queue
+  redis:
+    image: redis:7
+    container_name: torpay-redis
+    command: ["redis-server", "--loglevel", "warning", "--bind", "0.0.0.0", "--protected-mode", "no", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - torpay-network
+    restart: unless-stopped
+
+# =============================================================================
+# Networks & Volumes
+# =============================================================================
+networks:
+  torpay-network:
+    driver: bridge
+
+volumes:
+  shkeeper_data:
+  bitcoin_shkeeper_data:
+  tron_shkeeper_data:
+  mariadb_data:
+  redis_data:

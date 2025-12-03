@@ -6,7 +6,8 @@
   <title>Register - TorPay Merchant</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/torpay-merchant.css') }}">
 </head>
@@ -14,13 +15,7 @@
   <div class="torpay-auth-container">
     <div class="torpay-auth-card torpay-animate">
       <div class="torpay-auth-logo">
-        <div class="torpay-auth-logo-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
-          </svg>
-        </div>
+        <div class="torpay-auth-logo-icon"></div>
         <h1 class="torpay-auth-title">Create your account</h1>
         <p class="torpay-auth-subtitle">Start accepting crypto payments in minutes</p>
       </div>
@@ -88,7 +83,7 @@
           >
         </div>
 
-        <button type="submit" class="torpay-btn torpay-btn-primary" style="width: 100%; padding: 0.875rem;">
+        <button type="submit" class="torpay-btn torpay-btn-primary torpay-btn-lg" style="width: 100%;">
           Create Account
         </button>
       </form>

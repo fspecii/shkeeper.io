@@ -15,16 +15,16 @@
 
 {% block content %}
 <!-- Stats Grid -->
-<div class="torpay-grid torpay-grid-3" style="margin-bottom: 2rem;">
-  <div class="torpay-stat-card success torpay-animate" style="animation-delay: 0.1s;">
+<div class="torpay-grid torpay-grid-3 torpay-mb-4">
+  <div class="torpay-stat-card primary torpay-animate">
     <div class="torpay-stat-label">Available Balance</div>
-    <div class="torpay-stat-value success">${{ "%.2f"|format(total_balance|float) }}</div>
-    <div class="torpay-stat-meta">Ready to withdraw</div>
+    <div class="torpay-stat-value">${{ "%.2f"|format(total_balance|float) }}</div>
+    <div class="torpay-stat-meta" style="color: rgba(255,255,255,0.7);">Ready to withdraw</div>
   </div>
 
-  <div class="torpay-stat-card torpay-animate" style="animation-delay: 0.2s;">
+  <div class="torpay-stat-card torpay-animate">
     <div class="torpay-stat-label">Account Status</div>
-    <div class="torpay-stat-value">
+    <div class="torpay-stat-value" style="margin-top: 0.5rem;">
       {% if merchant.status.value == 'active' %}
         <span class="torpay-badge success">Active</span>
       {% elif merchant.status.value == 'pending' %}
@@ -36,17 +36,17 @@
     <div class="torpay-stat-meta">Member since {{ merchant.created_at.strftime('%B %d, %Y') if merchant.created_at else 'N/A' }}</div>
   </div>
 
-  <div class="torpay-stat-card warning torpay-animate" style="animation-delay: 0.3s;">
+  <div class="torpay-stat-card warning torpay-animate">
     <div class="torpay-stat-label">Pending Payouts</div>
     <div class="torpay-stat-value">{{ pending_payouts|length }}</div>
     <div class="torpay-stat-meta">
-      <a href="{{ url_for('merchant_auth.payouts') }}" style="color: inherit; text-decoration: none;">View all payouts &rarr;</a>
+      <a href="{{ url_for('merchant_auth.payouts') }}" style="color: inherit; text-decoration: none; font-weight: 700;">View all payouts &rarr;</a>
     </div>
   </div>
 </div>
 
 <!-- Balances by Currency -->
-<div class="torpay-card torpay-animate" style="margin-bottom: 2rem; animation-delay: 0.4s;">
+<div class="torpay-card torpay-animate torpay-mb-4">
   <div class="torpay-card-header">
     <h2 class="torpay-card-title">Balances by Currency</h2>
     <a href="{{ url_for('merchant_auth.balances') }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">View Details</a>
@@ -94,7 +94,7 @@
 </div>
 
 <!-- Recent Invoices -->
-<div class="torpay-card torpay-animate" style="animation-delay: 0.5s;">
+<div class="torpay-card torpay-animate">
   <div class="torpay-card-header">
     <h2 class="torpay-card-title">Recent Invoices</h2>
     <a href="{{ url_for('merchant_auth.transactions') }}" class="torpay-btn torpay-btn-secondary torpay-btn-sm">View All</a>

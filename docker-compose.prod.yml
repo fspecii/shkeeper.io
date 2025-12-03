@@ -109,7 +109,7 @@ services:
     hostname: bitcoin-shkeeper
     environment:
       - REDIS_HOST=redis
-      - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
+      - FULLNODE_URL=http://shkeeper:shkeeper@fullnode.bitcoin.shkeeper.io:8332
       - BTC_NETWORK=main
       - SHKEEPER_HOST=shkeeper:5000
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
@@ -138,7 +138,7 @@ services:
     image: vsyshost/bitcoin-shkeeper:1.0.5
     environment:
       - REDIS_HOST=redis
-      - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
+      - FULLNODE_URL=http://shkeeper:shkeeper@fullnode.bitcoin.shkeeper.io:8332
       - BTC_NETWORK=main
       - SHKEEPER_HOST=shkeeper:5000
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}

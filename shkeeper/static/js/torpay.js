@@ -11,7 +11,8 @@
     config: {
       apiKey: null,
       baseUrl: '',
-      pollInterval: 5000
+      pollInterval: 5000,
+      theme: 'dark'
     },
 
     cryptoInfo: {
@@ -74,6 +75,8 @@
     init: function(options) {
       this.config.apiKey = options.apiKey || null;
       this.config.baseUrl = (options.baseUrl || '').replace(/\/$/, '');
+      this.config.pollInterval = options.pollInterval || this.config.pollInterval;
+      this.config.theme = (options.theme || 'dark').toLowerCase();
       this.injectStyles();
     },
 
@@ -833,6 +836,42 @@
             height: 160px;
           }
         }
+
+        /* Light theme overrides */
+        .torpay-theme-light .torpay-modal { background: #ffffff; color: #0f172a; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .torpay-theme-light .torpay-header { background: #f3f4f6; border-bottom: 1px solid #e5e7eb; }
+        .torpay-theme-light .torpay-brand-name { color: #0f172a; }
+        .torpay-theme-light .torpay-status-bar { background: #22c55e; color: #0f172a; }
+        .torpay-theme-light .torpay-status-left { color: #0f172a; }
+        .torpay-theme-light .torpay-crypto-row,
+        .torpay-theme-light .torpay-amount-row { background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+        .torpay-theme-light .torpay-crypto-label,
+        .torpay-theme-light .torpay-amount-label,
+        .torpay-theme-light .torpay-amount-fiat,
+        .torpay-theme-light .torpay-tab { color: #475569; }
+        .torpay-theme-light .torpay-tab.active { color: #0f172a; }
+        .torpay-theme-light .torpay-tab.active::after { background: #22c55e; }
+        .torpay-theme-light .torpay-tabs { border-bottom: 1px solid #e5e7eb; background: #f8fafc; }
+        .torpay-theme-light .torpay-tab-content { background: #ffffff; }
+        .torpay-theme-light .torpay-copy-field,
+        .torpay-theme-light .torpay-crypto-badge { background: #f8fafc; border: 1px solid #e5e7eb; }
+        .torpay-theme-light .torpay-copy-label { color: #475569; }
+        .torpay-theme-light .torpay-copy-btn { background: #e5e7eb; color: #475569; }
+        .torpay-theme-light .torpay-copy-btn:hover { background: #d4d4d8; color: #111827; }
+        .torpay-theme-light .torpay-qr-wrapper { background: #f8fafc; }
+        .torpay-theme-light .torpay-wallet-btn { background: #16a34a; }
+        .torpay-theme-light .torpay-wallet-btn:hover { background: #15803d; }
+        .torpay-theme-light .torpay-pay-btn { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 14px rgba(16, 163, 74, 0.35); }
+        .torpay-theme-light .torpay-pay-btn:hover { box-shadow: 0 6px 20px rgba(16, 163, 74, 0.45); }
+        .torpay-theme-light .torpay-overlay { background: rgba(0,0,0,0.35); }
+
+        /* Emerald accent theme */
+        .torpay-theme-emerald .torpay-status-bar { background: #10b981; }
+        .torpay-theme-emerald .torpay-brand-icon { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .torpay-theme-emerald .torpay-pay-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); }
+        .torpay-theme-emerald .torpay-pay-btn:hover { box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45); }
+        .torpay-theme-emerald .torpay-wallet-btn { background: #10b981; }
+        .torpay-theme-emerald .torpay-wallet-btn:hover { background: #0f9f72; }
       `;
 
       var style = document.createElement('style');
@@ -868,6 +907,8 @@
 
       var overlay = document.createElement('div');
       overlay.className = 'torpay-overlay';
+      var theme = (options.theme || this.config.theme || 'dark').toLowerCase();
+      overlay.classList.add('torpay-theme-' + theme);
 
       var modal = document.createElement('div');
       modal.className = 'torpay-modal';

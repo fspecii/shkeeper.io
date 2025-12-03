@@ -80,7 +80,8 @@
       <pre class="bg-dark text-light p-3 rounded"><code>&lt;script&gt;
 SHKeeper.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url | replace("http://", "https://") }}'
+  baseUrl: '{{ base_url | replace("http://", "https://") }}',
+  theme: 'dark' // Optional: 'dark' (default), 'light', 'emerald'
 });
 &lt;/script&gt;</code></pre>
 
@@ -102,8 +103,12 @@ SHKeeper.createButton('#pay-button', {
   },
   onPaymentComplete: function(invoice) {
     console.log('Payment received:', invoice);
-    // Redirect to thank you page or update UI
-    window.location.href = '/thank-you?order=' + invoice.external_id;
+    // Anonymous flow: notify your own backend (no inbound webhooks)
+    fetch('/mark-paid', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ orderId: invoice.external_id || invoice.id })
+    });
   },
   onError: function(error) {
     console.error('Payment error:', error);
@@ -122,7 +127,14 @@ function payWithCrypto() {
     crypto: 'BTC',
     orderId: 'order-' + Date.now(),
     onPaymentComplete: function(invoice) {
-      alert('Payment received! Thank you.');
+      // Anonymous flow: client callback notifies your own backend (no inbound webhooks needed)
+      fetch('/mark-paid', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ orderId: invoice.external_id || invoice.id })
+      }).then(() => {
+        alert('Payment received! Your order is unlocked.');
+      });
     }
   });
 }

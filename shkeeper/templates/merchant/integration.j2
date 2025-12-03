@@ -32,6 +32,16 @@
         </div>
 
         <div class="torpay-form-group">
+          <label class="torpay-form-label">Theme</label>
+          <select id="widget-theme" class="torpay-form-input">
+            <option value="dark" selected>Dark (Default)</option>
+            <option value="light">Light</option>
+            <option value="emerald">Emerald</option>
+          </select>
+          <p style="color: var(--torpay-gray-500); font-size: 0.8rem; margin-top: 0.5rem;">Themes only change widget styling; payments stay anonymous.</p>
+        </div>
+
+        <div class="torpay-form-group">
           <label class="torpay-form-label">Button Text (Optional)</label>
           <input type="text" id="widget-text" class="torpay-form-input" placeholder="Leave empty for default: Pay $XX.XX">
         </div>
@@ -58,7 +68,7 @@
       </div>
       <div class="torpay-card-body">
         <p style="color: var(--torpay-gray-500); font-size: 0.875rem; margin-bottom: 1.5rem;">
-          Add these two snippets to any page to enable TorPay payments.
+          Add these two snippets to any page to enable TorPay payments. For anonymous setups, handle confirmation client-side and notify your own backend—no inbound webhooks required.
         </p>
 
         <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">1. Add the script (once per page)</h3>
@@ -221,9 +231,11 @@ function generateCode() {
   var amount = document.getElementById('widget-amount').value;
   var buttonText = document.getElementById('widget-text').value;
   var callback = document.getElementById('widget-callback').value;
+  var theme = document.getElementById('widget-theme').value || 'dark';
 
   // Format cryptos array for code display
   var cryptosStr = JSON.stringify(availableCryptos);
+  var themeLine = theme && theme !== 'dark' ? `\n  theme: '${theme}',` : '';
 
   var code = `<!-- TorPay Payment Button -->
 <div id="torpay-button"></div>
@@ -240,7 +252,7 @@ TorPay.createButton('#torpay-button', {
   currency: 'USD',
   cryptos: ${cryptosStr}${buttonText ? `,
   buttonText: '${buttonText}'` : ''}${callback ? `,
-  callbackUrl: '${callback}'` : ''},
+  callbackUrl: '${callback}'` : ''}${themeLine},
 
   onPaymentComplete: function(invoice) {
     console.log('Payment complete:', invoice);
@@ -249,21 +261,28 @@ TorPay.createButton('#torpay-button', {
 <\/script>`;
 
   document.querySelector('#generated-code pre').textContent = code;
-  updatePreview({ amount: parseFloat(amount), buttonText: buttonText });
+  updatePreview({ amount: parseFloat(amount), buttonText: buttonText, theme: theme });
 }
 
 function updatePreview(options) {
   var container = document.getElementById('preview-container');
   container.innerHTML = '';
-  TorPay.createButton(container, {
+TorPay.createButton(container, {
     amount: options.amount,
     currency: 'USD',
     // Use available cryptos from DB - default to first one (usually BTC)
     cryptos: availableCryptos,
     buttonText: options.buttonText,
+    theme: options.theme || 'dark',
     orderId: 'preview-' + Date.now(),
+    // For anonymity: rely on client callback to notify your backend, no inbound webhooks needed.
+    onPaymentComplete: function(invoice) {
+      console.log('Payment complete (preview):', invoice);
+      // Example: POST to your own backend (same-origin) to unlock the order
+      // fetch('/mark-paid', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({orderId: invoice.external_id || invoice.id})});
+    },
     onSuccess: function(data) { console.log('Preview created:', data); }
-  });
+});
 }
 
 function copyCode(elementId, button) {

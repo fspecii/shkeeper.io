@@ -55,6 +55,10 @@ services:
       - USDT_USERNAME=${USDT_USERNAME:-shkeeper}
       - USDT_PASSWORD=${USDT_PASSWORD:-shkeeper}
 
+      # BTC API server
+      - BTC_API_SERVER_HOST=bitcoin-shkeeper
+      - BTC_SERVER_PORT=6000
+
       # Tron API server
       - TRON_API_SERVER_HOST=tron-shkeeper
       - TRON_API_SERVER_PORT=6000
@@ -81,20 +85,43 @@ services:
   bitcoin-shkeeper:
     image: vsyshost/bitcoin-shkeeper:1.0.5
     hostname: bitcoin-shkeeper
+    command: ["gunicorn", "--access-logfile=-", "--workers=1", "--threads=16", "--timeout=600", "--bind=0.0.0.0:6000", "run:server"]
     environment:
-      - BITCOIN_RPC_HOST=fullnode.bitcoin.shkeeper.io
-      - BITCOIN_RPC_PORT=8332
-      - BITCOIN_RPC_USER=${BTC_USERNAME:-shkeeper}
-      - BITCOIN_RPC_PASSWORD=${BTC_PASSWORD:-shkeeper}
-      - BITCOIN_NETWORK=mainnet
+      - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
+      - BTC_NETWORK=main
       - SHKEEPER_HOST=shkeeper:5000
       - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
       - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
       - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
     volumes:
-      - bitcoin_shkeeper_data:/app/data
+      - bitcoin_shkeeper_data:/root/.bitcoin
     depends_on:
-      - mariadb
+      - redis
+    networks:
+      - default
+    restart: unless-stopped
+
+  # Bitcoin Celery worker for background tasks
+  bitcoin-tasks:
+    image: vsyshost/bitcoin-shkeeper:1.0.5
+    command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "-B"]
+    environment:
+      - FULLNODE_URL=http://${BTC_USERNAME:-shkeeper}:${BTC_PASSWORD:-shkeeper}@fullnode.bitcoin.shkeeper.io:8332
+      - BTC_NETWORK=main
+      - SHKEEPER_HOST=shkeeper:5000
+      - SHKEEPER_BACKEND_KEY=${SHKEEPER_BACKEND_KEY:-torpay-secret-key}
+      - BTC_USERNAME=${BTC_USERNAME:-shkeeper}
+      - BTC_PASSWORD=${BTC_PASSWORD:-shkeeper}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
+      - C_FORCE_ROOT=1
+    volumes:
+      - bitcoin_shkeeper_data:/root/.bitcoin
+    depends_on:
+      - redis
+      - bitcoin-shkeeper
     networks:
       - default
     restart: unless-stopped
@@ -113,6 +140,8 @@ services:
       - SHKEEPER_HOST=shkeeper:5000
       - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
       - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - REDIS_URL=redis://redis:6379/1
     volumes:
       - tron_shkeeper_data:/app/data
     depends_on:
@@ -134,6 +163,8 @@ services:
       - FULLNODE_URL=${TRON_FULLNODE_URL:-https://api.trongrid.io}
       - C_FORCE_ROOT=1
       - DB_URI=mysql+pymysql://root:shkeeper@mariadb/shkeeper?charset=utf8mb4
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - REDIS_URL=redis://redis:6379/1
     volumes:
       - tron_shkeeper_data:/app/data
     depends_on:

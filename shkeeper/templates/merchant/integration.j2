@@ -82,7 +82,7 @@
 <pre style="margin: 0; color: #e2e8f0;">&lt;script&gt;
 TorPay.init({
   apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
-  baseUrl: '{{ base_url | replace("http://", "https://") }}'
+  baseUrl: '{{ base_url }}'
 });
 &lt;/script&gt;</pre>
         </div>
@@ -148,7 +148,7 @@ TorPay.init({
   &lt;script&gt;
     TorPay.init({
       apiKey: '<span style="color: #a78bfa;">{{ merchant.api_key }}</span>',
-      baseUrl: '{{ base_url | replace("http://", "https://") }}'
+      baseUrl: '{{ base_url }}'
     });
 
     TorPay.createButton('#torpay-button', {
@@ -224,7 +224,7 @@ var availableCryptos = {{ cryptos | tojson }};
 
 TorPay.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url | replace("http://", "https://") }}'
+  baseUrl: '{{ base_url }}'
 });
 
 function generateCode() {
@@ -244,7 +244,7 @@ function generateCode() {
 <script>
 TorPay.init({
   apiKey: '{{ merchant.api_key }}',
-  baseUrl: '{{ base_url | replace("http://", "https://") }}'
+  baseUrl: '{{ base_url }}'
 });
 
 TorPay.createButton('#torpay-button', {

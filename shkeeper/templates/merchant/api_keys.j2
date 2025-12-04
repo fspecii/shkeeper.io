@@ -107,7 +107,7 @@
   <div class="torpay-card-body">
     <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--torpay-gray-700);">Create Invoice</h3>
     <div class="torpay-code-block" style="margin-bottom: 1.5rem;">
-<pre style="margin: 0; color: #e2e8f0;">curl -X POST https://api.torpay.me/api/v1/BTC/payment_request \
+<pre style="margin: 0; color: #e2e8f0;">curl -X POST {{ base_url }}/api/v1/BTC/payment_request \
   -H "X-Shkeeper-Api-Key: <span style="color: #a78bfa;">{{ merchant.api_key }}</span>" \
   -H "Content-Type: application/json" \
   -d '{

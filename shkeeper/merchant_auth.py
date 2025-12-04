@@ -219,7 +219,8 @@ def dashboard():
 def api_keys():
     """View and manage API keys."""
     merchant = g.current_merchant
-    return render_template("merchant/api_keys.j2", merchant=merchant)
+    base_url = request.host_url.rstrip('/')
+    return render_template("merchant/api_keys.j2", merchant=merchant, base_url=base_url)
 
 
 @bp.route("/api-keys/regenerate", methods=["POST"])

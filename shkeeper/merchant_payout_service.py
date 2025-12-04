@@ -15,6 +15,7 @@ from shkeeper.models import (
     Merchant,
     ExchangeRate,
     Transaction,
+    Wallet,
 )
 from shkeeper.modules.classes.crypto import Crypto
 
@@ -101,13 +102,21 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
             f"to {dest_address}"
         )
 
-        # Send the crypto
-        # Note: Different crypto classes might have different send methods
-        # Most bitcoin-like cryptos use sendtoaddress
-        if hasattr(crypto, 'sendtoaddress'):
-            response = crypto.sendtoaddress(
-                destination=dest_address,
-                amount=crypto_amount,
+        # Send the crypto using mkpayout method
+        # Bitcoin-like cryptos use mkpayout(destination, amount, fee, subtract_fee_from_amount)
+        if hasattr(crypto, 'mkpayout'):
+            # Get the wallet to retrieve the configured payout fee
+            wallet = Wallet.query.filter_by(crypto=payout.crypto).first()
+            if not wallet:
+                raise Exception(f"Wallet not configured for {payout.crypto}")
+
+            # Use wallet's payout fee, default to a reasonable value if not set
+            payout_fee = wallet.pfee or "10000"  # Default 10000 satoshis/kb
+
+            response = crypto.mkpayout(
+                dest_address,
+                crypto_amount,
+                payout_fee,
                 subtract_fee_from_amount=True  # Fee comes from the payout amount
             )
 
@@ -147,7 +156,7 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
             return True, f"Payout completed. TX: {tx_hash}"
 
         else:
-            # Crypto doesn't support sendtoaddress - mark as failed
+            # Crypto doesn't support mkpayout - mark as failed
             raise Exception(f"Cryptocurrency {payout.crypto} doesn't support automated payouts")
 
     except Exception as e:

@@ -153,6 +153,16 @@ def send_unconfirmed_notification(utx: UnconfirmedTransaction):
         crypto=utx.crypto, addr=utx.addr
     ).first()
     invoice = Invoice.query.filter_by(id=invoice_address.invoice_id).first()
+
+    # Skip if no callback URL configured
+    if not invoice.callback_url:
+        app.logger.info(
+            f"[{utx.crypto}/{utx.txid}] No callback URL configured, marking as confirmed"
+        )
+        utx.callback_confirmed = True
+        db.session.commit()
+        return True
+
     crypto = Crypto.instances[utx.crypto]
     apikey = crypto.wallet.apikey
 
@@ -213,6 +223,15 @@ def send_notification(tx):
     app.logger.info(f"[{tx.crypto}/{tx.txid}] Notificator started")
 
     invoice = tx.invoice
+
+    # Skip if no callback URL configured
+    if not invoice.callback_url:
+        app.logger.info(
+            f"[{tx.crypto}/{tx.txid}] No callback URL configured, marking as confirmed"
+        )
+        tx.callback_confirmed = True
+        db.session.commit()
+        return True
 
     # Calculate commission if this is a merchant invoice and payment is complete
     commission_amount = Decimal(0)

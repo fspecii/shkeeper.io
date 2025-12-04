@@ -21,6 +21,25 @@ from flask import (
 from flask import current_app as app
 
 from shkeeper import db
+
+
+def get_base_url():
+    """Get the base URL respecting X-Forwarded-Proto header for HTTPS proxies.
+
+    For .onion addresses (Tor), always use HTTP since Tor provides encryption.
+    For clearnet, respect X-Forwarded-Proto header from reverse proxy.
+    """
+    host = request.headers.get('X-Forwarded-Host', request.host)
+
+    # Tor hidden services use HTTP (Tor provides encryption)
+    if '.onion' in host:
+        return f"http://{host}"
+
+    # Clearnet: respect X-Forwarded-Proto from reverse proxy
+    proto = request.headers.get('X-Forwarded-Proto', 'http')
+    return f"{proto}://{host}"
+
+
 from shkeeper.models import (
     Merchant, MerchantStatus, MerchantBalance, Invoice, Transaction,
     CommissionRecord, PlatformSettings, MerchantPayout, MerchantPayoutStatus
@@ -219,7 +238,7 @@ def dashboard():
 def api_keys():
     """View and manage API keys."""
     merchant = g.current_merchant
-    base_url = request.host_url.rstrip('/')
+    base_url = get_base_url()
     return render_template("merchant/api_keys.j2", merchant=merchant, base_url=base_url)
 
 
@@ -540,7 +559,7 @@ def docs():
     cryptos = list(Crypto.instances.keys())
 
     # Build base URL for API examples
-    base_url = request.host_url.rstrip('/')
+    base_url = get_base_url()
 
     return render_template(
         "merchant/docs.j2",
@@ -570,7 +589,7 @@ def integration():
     cryptos.sort(key=sort_key)
 
     # Build base URL
-    base_url = request.host_url.rstrip('/')
+    base_url = get_base_url()
 
     return render_template(
         "merchant/integration.j2",

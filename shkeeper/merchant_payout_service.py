@@ -127,6 +127,19 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
             if response.get("error"):
                 raise Exception(f"RPC error: {response['error']}")
 
+            # Handle async payout (task_id) vs sync payout (result)
+            # Some crypto backends (like BTC) use async payouts that return a task_id
+            # The actual tx hash comes later via payoutnotify callback
+            if response.get("task_id"):
+                # Async payout - store task_id and keep status as PROCESSING
+                payout.error_message = f"task_id:{response['task_id']}"
+                payout.amount_crypto = crypto_amount
+                db.session.commit()
+                app.logger.info(
+                    f"[MerchantPayout #{payout.id}] Async payout initiated. Task ID: {response['task_id']}"
+                )
+                return True, f"Payout processing. Task ID: {response['task_id']}"
+
             tx_hash = response.get("result")
             if not tx_hash:
                 raise Exception(f"No transaction hash returned. Full response: {response}")

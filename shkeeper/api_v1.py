@@ -372,7 +372,39 @@ def payoutnotify(crypto_name):
         app.logger.info(f"Payout notification: {data}")
 
         for p in data:
+            # Handle legacy auto-payout system
             Payout.add(p, crypto_name)
+
+            # Handle merchant payouts - update any PROCESSING payouts with matching destination
+            if p.get("status") == "success" and p.get("dest") and p.get("txids"):
+                processing_payouts = MerchantPayout.query.filter_by(
+                    crypto=crypto_name,
+                    dest_address=p["dest"],
+                    status=MerchantPayoutStatus.PROCESSING
+                ).all()
+
+                for merchant_payout in processing_payouts:
+                    tx_hash = p["txids"][0] if p["txids"] else None
+                    if tx_hash:
+                        merchant_payout.status = MerchantPayoutStatus.COMPLETED
+                        merchant_payout.tx_hash = tx_hash
+                        merchant_payout.error_message = None
+
+                        # Update merchant balance
+                        balance = MerchantBalance.query.filter_by(
+                            merchant_id=merchant_payout.merchant_id,
+                            crypto=crypto_name,
+                            fiat=merchant_payout.fiat or "USD",
+                        ).first()
+                        if balance:
+                            balance.pending_balance = (balance.pending_balance or Decimal(0)) - merchant_payout.amount_fiat
+                            balance.total_paid_out = (balance.total_paid_out or Decimal(0)) + merchant_payout.amount_fiat
+
+                        app.logger.info(
+                            f"[MerchantPayout #{merchant_payout.id}] Completed via payoutnotify. TX: {tx_hash}"
+                        )
+
+                db.session.commit()
 
         return {"status": "success"}
     except Exception as e:

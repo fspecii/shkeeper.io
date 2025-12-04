@@ -120,12 +120,16 @@ def process_payout(payout_id: int) -> tuple[bool, str]:
                 subtract_fee_from_amount=True  # Fee comes from the payout amount
             )
 
+            app.logger.info(
+                f"[MerchantPayout #{payout.id}] RPC response: {response}"
+            )
+
             if response.get("error"):
                 raise Exception(f"RPC error: {response['error']}")
 
             tx_hash = response.get("result")
             if not tx_hash:
-                raise Exception("No transaction hash returned")
+                raise Exception(f"No transaction hash returned. Full response: {response}")
 
             # Success - update payout
             payout.status = MerchantPayoutStatus.COMPLETED

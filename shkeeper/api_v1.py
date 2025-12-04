@@ -681,6 +681,52 @@ def list_invoices(external_id):
         }
 
 
+@bp.get("/invoice/<int:invoice_id>/status")
+@api_key_required
+def get_invoice_status(invoice_id):
+    """
+    Get the status of an invoice by its ID.
+
+    Used by the payment widget to poll for payment status updates.
+
+    Returns the invoice status directly in 'status' field for widget compatibility.
+    The widget checks data.status for values like 'PAID', 'UNPAID', 'PARTIAL'.
+    """
+    try:
+        # Build query
+        query = Invoice.query.filter_by(id=invoice_id)
+
+        # Multi-tenant: filter by merchant if authenticated as merchant
+        if hasattr(g, 'merchant') and g.merchant:
+            query = query.filter(Invoice.merchant_id == g.merchant.id)
+
+        invoice = query.first()
+
+        if not invoice:
+            return {"status": "error", "message": "Invoice not found"}, 404
+
+        # Return invoice status directly in 'status' field for widget compatibility
+        # Widget checks: var status = (data.status || '').toUpperCase();
+        return {
+            "status": invoice.status.name if invoice.status else "UNPAID",
+            "id": invoice.id,
+            "amount_crypto": str(invoice.amount_crypto) if invoice.amount_crypto else None,
+            "amount_fiat": str(invoice.amount_fiat) if invoice.amount_fiat else None,
+            "balance_crypto": str(invoice.balance_crypto) if invoice.balance_crypto else "0",
+            "balance_fiat": str(invoice.balance_fiat) if invoice.balance_fiat else "0",
+            "crypto": invoice.crypto,
+            "fiat": invoice.fiat,
+            "addr": invoice.addr,
+            "exchange_rate": str(invoice.exchange_rate) if invoice.exchange_rate else None,
+        }
+    except Exception as e:
+        app.logger.exception(f"Failed to get invoice status for {invoice_id}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }, 500
+
+
 @bp.get("/<crypto_name>/payouts")
 @api_key_required
 def list_payouts(crypto_name):
